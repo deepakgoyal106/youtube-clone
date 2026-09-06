@@ -1,0 +1,45 @@
+.filter-bar {
+    display: flex;
+    gap: 10px;
+    padding: 15px 0 20px;
+    overflow-x: auto;
+    scrollbar-width: none;
+}
+
+.filter-bar::-webkit-scrollbar {
+    display: none;
+}
+
+.filter-bar button {
+    border: none;
+    background: #f2f2f2;
+    color: #0f0f0f;
+    padding: 9px 16px;
+    border-radius: 8px;
+    cursor: pointer;
+    white-space: nowrap;
+    font-size: 14px;
+    font-weight: 500;
+    transition: background 0.2s;
+}
+
+.filter-bar button:hover {
+    background: #e5e5e5;
+}
+
+.filter-bar button.active {
+    background: #0f0f0f;
+    color: white;
+}
+
+@media (max-width: 600px) {
+    .filter-bar {
+        padding: 10px 0 15px;
+        gap: 8px;
+    }
+
+    .filter-bar button {
+        padding: 8px 13px;
+        font-size: 13px;
+    }
+}
