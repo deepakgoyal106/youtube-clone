@@ -25,6 +25,11 @@
     object-fit: contain;
 }
 
+.video-error-message {
+    color: red;
+    font-weight: 600;
+}
+
 /* Title */
 
 .video-player-title {

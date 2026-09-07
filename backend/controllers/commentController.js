@@ -1,167 +1,167 @@
 import Comment from "../models/Comment.js";
 
 // CREATE COMMENT
-const createComment = (req, res) => {
+const createComment = async (req, res) => {
+    try {
+        const { text } = req.body;
+        const videoId = req.params.videoId;
 
-    const videoId = req.params.videoId;
-    const { text } = req.body;
+        // Prevent empty comments from being stored in MongoDB.
+        if (!text?.trim()) {
+            return res.status(400).json({
+                message: "Comment text is required"
+            });
+        }
 
-    if (!text || !text.trim()) {
-        return res.status(400).json({
-            message: "Comment text is required"
+        // Limit comment size so users cannot submit unnecessarily large text.
+        if (text.trim().length > 500) {
+            return res.status(400).json({
+                message: "Comment cannot exceed 500 characters"
+            });
+        }
+
+        const comment = await Comment.create({
+            text: text.trim(),
+            video: videoId,
+            user: req.user.userId
+        });
+
+        // Populate the user so the frontend can immediately display
+        // the username without making another API request.
+        await comment.populate("user", "-password");
+
+        res.status(201).json({
+            message: "Comment added successfully",
+            comment
+        });
+    } catch (error) {
+        console.error("CREATE COMMENT ERROR:", error);
+
+        res.status(500).json({
+            message: "Failed to add comment"
         });
     }
-
-    const newComment = new Comment({
-        text: text.trim(),
-        video: videoId,
-        user: req.user.userId
-    });
-
-    newComment.save()
-        .then((comment) => {
-
-            res.status(201).json({
-                message: "Comment added successfully",
-                comment: comment
-            });
-
-        })
-        .catch((error) => {
-
-            console.log("Error creating comment:", error);
-
-            res.status(500).json({
-                message: "Failed to add comment"
-            });
-        });
 };
 
 
 // GET COMMENTS FOR A VIDEO
-const getComments = (req, res) => {
+const getComments = async (req, res) => {
+    try {
+        const videoId = req.params.videoId;
 
-    const videoId = req.params.videoId;
-
-    Comment.find({ video: videoId })
-        .sort({ createdAt: -1 })
-        .populate("user", "-password")
-        .then((comments) => {
-
-            res.status(200).json({
-                comments: comments
-            });
-
+        // Return newest comments first and never expose user passwords.
+        const comments = await Comment.find({
+            video: videoId
         })
-        .catch((error) => {
+            .sort({ createdAt: -1 })
+            .populate("user", "-password");
 
-            console.log("Error fetching comments:", error);
-
-            res.status(500).json({
-                message: "Failed to fetch comments"
-            });
+        res.status(200).json({
+            comments
         });
+    } catch (error) {
+        console.error("GET COMMENTS ERROR:", error);
+
+        res.status(500).json({
+            message: "Failed to fetch comments"
+        });
+    }
 };
 
 
 // UPDATE COMMENT
-const updateComment = (req, res) => {
+const updateComment = async (req, res) => {
+    try {
+        const commentId = req.params.id;
+        const { text } = req.body;
 
-    const commentId = req.params.id;
-    const { text } = req.body;
+        // Validate the updated comment before querying MongoDB.
+        if (!text?.trim()) {
+            return res.status(400).json({
+                message: "Comment text is required"
+            });
+        }
 
-    if (!text || !text.trim()) {
-        return res.status(400).json({
-            message: "Comment text is required"
+        if (text.trim().length > 500) {
+            return res.status(400).json({
+                message: "Comment cannot exceed 500 characters"
+            });
+        }
+
+        const comment = await Comment.findById(commentId);
+
+        if (!comment) {
+            return res.status(404).json({
+                message: "Comment not found"
+            });
+        }
+
+        // Only the original author can edit their comment.
+        if (comment.user.toString() !== req.user.userId) {
+            return res.status(403).json({
+                message:
+                    "You are not allowed to edit this comment"
+            });
+        }
+
+        comment.text = text.trim();
+
+        const updatedComment = await comment.save();
+
+        // Return the username along with the updated comment.
+        await updatedComment.populate("user", "-password");
+
+        res.status(200).json({
+            message: "Comment updated successfully",
+            comment: updatedComment
+        });
+    } catch (error) {
+        console.error("UPDATE COMMENT ERROR:", error);
+
+        res.status(500).json({
+            message: "Failed to update comment"
         });
     }
-
-    Comment.findById(commentId)
-        .then((comment) => {
-
-            if (!comment) {
-                return res.status(404).json({
-                    message: "Comment not found"
-                });
-            }
-
-            // Only the person who created the comment can edit it
-            if (comment.user.toString() !== req.user.userId) {
-                return res.status(403).json({
-                    message:
-                        "You are not allowed to edit this comment"
-                });
-            }
-
-            comment.text = text.trim();
-
-            return comment.save();
-        })
-        .then((updatedComment) => {
-
-            if (updatedComment) {
-                res.status(200).json({
-                    message: "Comment updated successfully",
-                    comment: updatedComment
-                });
-            }
-
-        })
-        .catch((error) => {
-
-            console.log("Error updating comment:", error);
-
-            res.status(500).json({
-                message: "Failed to update comment"
-            });
-        });
 };
 
 
 // DELETE COMMENT
-const deleteComment = (req, res) => {
+const deleteComment = async (req, res) => {
+    try {
+        const commentId = req.params.id;
 
-    const commentId = req.params.id;
+        const comment = await Comment.findById(commentId);
 
-    Comment.findById(commentId)
-        .then((comment) => {
-
-            if (!comment) {
-                return res.status(404).json({
-                    message: "Comment not found"
-                });
-            }
-
-            // Only the person who created the comment can delete it
-            if (comment.user.toString() !== req.user.userId) {
-                return res.status(403).json({
-                    message:
-                        "You are not allowed to delete this comment"
-                });
-            }
-
-            return Comment.findByIdAndDelete(commentId);
-        })
-        .then((deletedComment) => {
-
-            if (deletedComment) {
-                res.status(200).json({
-                    message: "Comment deleted successfully"
-                });
-            }
-
-        })
-        .catch((error) => {
-
-            console.log("Error deleting comment:", error);
-
-            res.status(500).json({
-                message: "Failed to delete comment"
+        if (!comment) {
+            return res.status(404).json({
+                message: "Comment not found"
             });
+        }
+
+        // Only the original author can delete their comment.
+        if (comment.user.toString() !== req.user.userId) {
+            return res.status(403).json({
+                message:
+                    "You are not allowed to delete this comment"
+            });
+        }
+
+        await Comment.findByIdAndDelete(commentId);
+
+        res.status(200).json({
+            message: "Comment deleted successfully"
         });
+    } catch (error) {
+        console.error("DELETE COMMENT ERROR:", error);
+
+        res.status(500).json({
+            message: "Failed to delete comment"
+        });
+    }
 };
 
 
+// Export all comment controller functions for the comment routes.
 export {
     getComments,
     updateComment,

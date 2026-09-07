@@ -487,11 +487,20 @@ function VideoPlayer() {
             </div>
 
             {/* USER FEEDBACK MESSAGE */}
-            {message && (
-                <div className="video-message">
-                    {message}
-                </div>
-            )}
+           {message && (
+    <div
+        className={
+            message.toLowerCase().includes("cannot") ||
+            message.toLowerCase().includes("failed") ||
+            message.toLowerCase().includes("required") ||
+            message.toLowerCase().includes("login")
+                ? "video-message video-error-message"
+                : "video-message"
+        }
+    >
+        {message}
+    </div>
+)}
 
             {/* VIDEO DESCRIPTION */}
             <div className="video-description">
