@@ -21,6 +21,10 @@ function Channel() {
     const [channelName, setChannelName] = useState("");
     const [channelDescription, setChannelDescription] = useState("");
 
+    const [editingChannel, setEditingChannel] = useState(false);
+    const [editChannelName, setEditChannelName] = useState("");
+    const [editChannelDescription, setEditChannelDescription] = useState("");
+
     const [creatingChannel, setCreatingChannel] = useState(false);
 
     const [error, setError] = useState("");
@@ -57,10 +61,7 @@ function Channel() {
                 error.response?.data
             );
 
-            // No channel yet
-            if (
-                error.response?.status === 404
-            ) {
+            if (error.response?.status === 404) {
                 setChannel(null);
                 setError("");
                 return;
@@ -73,6 +74,7 @@ function Channel() {
         });
     }, []);
 
+    // CREATE CHANNEL
     const handleCreateChannel = () => {
         if (
             !channelName.trim() ||
@@ -124,6 +126,120 @@ function Channel() {
         });
     };
 
+    // START EDITING CHANNEL
+    const handleEditChannel = () => {
+        setEditingChannel(true);
+
+        setEditChannelName(channel.name);
+        setEditChannelDescription(
+            channel.description
+        );
+
+        setError("");
+        setMessage("");
+    };
+
+    // CANCEL CHANNEL EDIT
+    const handleCancelChannelEdit = () => {
+        setEditingChannel(false);
+
+        setEditChannelName("");
+        setEditChannelDescription("");
+
+        setError("");
+        setMessage("");
+    };
+
+    // UPDATE CHANNEL
+    const handleUpdateChannel = () => {
+        if (
+            !editChannelName.trim() ||
+            !editChannelDescription.trim()
+        ) {
+            setError(
+                "Channel name and description are required"
+            );
+            return;
+        }
+
+        const token = localStorage.getItem("token");
+
+        axios.put(
+            `http://localhost:5050/api/channels/${channel._id}`,
+            {
+                name: editChannelName.trim(),
+                description:
+                    editChannelDescription.trim()
+            },
+            {
+                headers: {
+                    Authorization: `Bearer ${token}`
+                }
+            }
+        )
+        .then((response) => {
+            setChannel(response.data.channel);
+
+            setEditingChannel(false);
+
+            setEditChannelName("");
+            setEditChannelDescription("");
+
+            setMessage(
+                "Channel updated successfully"
+            );
+
+            setError("");
+        })
+        .catch((error) => {
+            setError(
+                error.response?.data?.message ||
+                "Failed to update channel"
+            );
+        });
+    };
+
+    // DELETE CHANNEL
+    const handleDeleteChannel = () => {
+        const confirmDelete = window.confirm(
+            "Are you sure you want to delete your channel? This action cannot be undone."
+        );
+
+        if (!confirmDelete) {
+            return;
+        }
+
+        const token = localStorage.getItem("token");
+
+        axios.delete(
+            `http://localhost:5050/api/channels/${channel._id}`,
+            {
+                headers: {
+                    Authorization: `Bearer ${token}`
+                }
+            }
+        )
+        .then(() => {
+            setChannel(null);
+            setVideos([]);
+
+            setEditingChannel(false);
+
+            setMessage(
+                "Channel deleted successfully. You can create a new channel."
+            );
+
+            setError("");
+        })
+        .catch((error) => {
+            setError(
+                error.response?.data?.message ||
+                "Failed to delete channel"
+            );
+        });
+    };
+
+    // DELETE VIDEO
     const handleDeleteVideo = (videoId) => {
         const confirmDelete = window.confirm(
             "Are you sure you want to delete this video?"
@@ -164,6 +280,7 @@ function Channel() {
         });
     };
 
+    // START EDITING VIDEO
     const handleEditVideo = (video) => {
         setEditingVideoId(video._id);
 
@@ -179,6 +296,7 @@ function Channel() {
         setMessage("");
     };
 
+    // CANCEL VIDEO EDIT
     const handleCancelEdit = () => {
         setEditingVideoId(null);
 
@@ -192,6 +310,7 @@ function Channel() {
         setMessage("");
     };
 
+    // UPDATE VIDEO
     const handleUpdateVideo = (videoId) => {
         if (
             !title.trim() ||
@@ -254,6 +373,7 @@ function Channel() {
         });
     };
 
+    // CREATE CHANNEL SCREEN
     if (!channel && !error) {
         return (
             <div className="channel-page">
@@ -304,6 +424,12 @@ function Channel() {
                             </div>
                         )}
 
+                        {message && (
+                            <div className="success-message">
+                                {message}
+                            </div>
+                        )}
+
                         <button
                             className="create-channel-button"
                             onClick={handleCreateChannel}
@@ -322,6 +448,7 @@ function Channel() {
         );
     }
 
+    // ERROR SCREEN
     if (error && !channel) {
         return (
             <div className="channel-error">
@@ -343,34 +470,116 @@ function Channel() {
                 </div>
 
                 <div className="channel-details">
-                    <h1>{channel.name}</h1>
 
-                    <p>
-                        {channel.description}
-                    </p>
+                    {!editingChannel ? (
+                        <>
+                            <h1>{channel.name}</h1>
 
-                    <span>
-                        {videos.length}{" "}
-                        {videos.length === 1
-                            ? "video"
-                            : "videos"}
-                    </span>
+                            <p>
+                                {channel.description}
+                            </p>
+
+                            <span>
+                                {videos.length}{" "}
+                                {videos.length === 1
+                                    ? "video"
+                                    : "videos"}
+                            </span>
+                        </>
+                    ) : (
+                        <div className="channel-edit-form">
+
+                            <h2>
+                                Edit Channel
+                            </h2>
+
+                            <label>
+                                Channel Name
+                            </label>
+
+                            <input
+                                type="text"
+                                value={editChannelName}
+                                onChange={(e) =>
+                                    setEditChannelName(
+                                        e.target.value
+                                    )
+                                }
+                            />
+
+                            <label>
+                                Channel Description
+                            </label>
+
+                            <textarea
+                                value={
+                                    editChannelDescription
+                                }
+                                onChange={(e) =>
+                                    setEditChannelDescription(
+                                        e.target.value
+                                    )
+                                }
+                            />
+
+                            <div className="channel-edit-buttons">
+
+                                <button
+                                    className="save-button"
+                                    onClick={
+                                        handleUpdateChannel
+                                    }
+                                >
+                                    Save Changes
+                                </button>
+
+                                <button
+                                    className="cancel-button"
+                                    onClick={
+                                        handleCancelChannelEdit
+                                    }
+                                >
+                                    Cancel
+                                </button>
+
+                            </div>
+
+                        </div>
+                    )}
+
                 </div>
 
             </div>
 
-            <div className="channel-actions">
+            {/* CHANNEL ACTIONS */}
+            {!editingChannel && (
+                <div className="channel-actions">
 
-                <button
-                    onClick={() =>
-                        navigate("/upload")
-                    }
-                    className="upload-button"
-                >
-                    + Upload Video
-                </button>
+                    <button
+                        onClick={() =>
+                            navigate("/upload")
+                        }
+                        className="upload-button"
+                    >
+                        + Upload Video
+                    </button>
 
-            </div>
+                    <button
+                        onClick={handleEditChannel}
+                        className="edit-channel-button"
+                    >
+                        ✏️ Edit Channel
+                    </button>
+
+                    <button
+                        onClick={handleDeleteChannel}
+                        className="delete-channel-button"
+                    >
+                        🗑️ Delete Channel
+                    </button>
+
+                </div>
+            )}
 
             {message && (
                 <div className="success-message">
@@ -423,7 +632,7 @@ function Channel() {
                             {editingVideoId ===
                             video._id ? (
 
-                                /* EDIT FORM */
+                                /* EDIT VIDEO FORM */
                                 <div className="edit-video-form">
 
                                     <h3>
