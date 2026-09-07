@@ -4,7 +4,7 @@ import axios from "axios";
 import FilterBar from "../components/FilterBar";
 import VideoCard from "../components/VideoCard";
 
-function Home({ searchTerm }) {
+function Home({ searchTerm, setSearchTerm }) {
     const [videos, setVideos] = useState([]);
     const [selectedCategory, setSelectedCategory] = useState("All");
 
@@ -49,6 +49,11 @@ function Home({ searchTerm }) {
         return matchesSearch && matchesCategory;
     });
 
+    const clearFilters = () => {
+        setSearchTerm("");
+        setSelectedCategory("All");
+    };
+
     return (
         <div className="home-page">
 
@@ -73,26 +78,46 @@ function Home({ searchTerm }) {
                 !error &&
                 filteredVideos.length === 0 && (
                     <div className="home-message">
+
                         <h2>No videos found</h2>
 
                         <p>
                             Try a different search or
                             category.
                         </p>
+
+                        {(searchTerm ||
+                            selectedCategory !== "All") && (
+
+                            <button
+                                type="button"
+                                onClick={clearFilters}
+                            >
+                                Clear Filters
+                            </button>
+
+                        )}
+
                     </div>
                 )}
 
             {!loading &&
                 !error &&
                 filteredVideos.length > 0 && (
+
                     <div className="video-grid">
+
                         {filteredVideos.map((video) => (
+
                             <VideoCard
                                 key={video._id}
                                 video={video}
                             />
+
                         ))}
+
                     </div>
+
                 )}
 
         </div>
