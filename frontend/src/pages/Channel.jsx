@@ -1,11 +1,12 @@
 import { useEffect, useState } from "react";
 import axios from "axios";
-import { useNavigate } from "react-router-dom";
+import { useLocation, useNavigate } from "react-router-dom";
 
 import "./Channel.css";
 
 function Channel() {
     const navigate = useNavigate();
+    const location = useLocation();
 
     // Store the logged-in user's channel and its videos.
     const [channel, setChannel] = useState(null);
@@ -53,51 +54,72 @@ function Channel() {
             return;
         }
 
-        axios.get(
-            "http://localhost:5050/api/channels/my-channel",
-            {
-                headers: {
-                    Authorization: `Bearer ${token}`
+        setLoadingChannel(true);
+
+        axios
+            .get(
+                "http://localhost:5050/api/channels/my-channel",
+                {
+                    headers: {
+                        Authorization: `Bearer ${token}`
+                    }
                 }
-            }
-        )
-        .then((response) => {
-            const myChannel = response.data.channel;
+            )
+            .then((response) => {
+                const myChannel = response.data.channel;
 
-            setChannel(myChannel);
+                setChannel(myChannel);
 
-            // Once the channel is found, load all videos belonging to it.
-            return axios.get(
-                `http://localhost:5050/api/videos/channel/${myChannel._id}`
-            );
-        })
-        .then((response) => {
-            if (response) {
-                setVideos(response.data.videos);
-            }
-        })
-        .catch((error) => {
-            console.log(
-                "CHANNEL ERROR:",
-                error.response?.data
-            );
+                // Once the channel is found, load all videos belonging to it.
+                return axios.get(
+                    `http://localhost:5050/api/videos/channel/${myChannel._id}`
+                );
+            })
+            .then((response) => {
+                if (response) {
+                    setVideos(response.data.videos);
+                }
+            })
+            .catch((error) => {
+                console.log(
+                    "CHANNEL ERROR:",
+                    error.response?.data
+                );
 
-            // A 404 means the user has not created a channel yet.
-            if (error.response?.status === 404) {
-                setChannel(null);
-                setError("");
-                return;
-            }
+                // A 404 means the user has not created a channel yet.
+                if (error.response?.status === 404) {
+                    setChannel(null);
+                    setVideos([]);
+                    return;
+                }
 
-            setError(
-                error.response?.data?.message ||
-                "Failed to load channel"
-            );
-        })
-        .finally(() => {
-            setLoadingChannel(false);
-        });
-    }, []);
+                setError(
+                    error.response?.data?.message ||
+                    "Failed to load channel"
+                );
+            })
+            .finally(() => {
+                setLoadingChannel(false);
+            });
+    }, [location.state?.refresh]);
+
+    // RESET PAGE STATE
+    // Clicking My Channel again from the sidebar changes the refresh value.
+    // This clears old validation/error messages.
+    useEffect(() => {
+        if (location.state?.refresh) {
+            setError("");
+            setMessage("");
+            setEditingChannel(false);
+            setEditingVideoId(null);
+
+            setTitle("");
+            setCategory("Entertainment");
+            setDescription("");
+            setVideoUrl("");
+            setThumbnailUrl("");
+        }
+    }, [location.state?.refresh]);
 
     // URL VALIDATION
     // Used when editing a video's video and thumbnail URLs.
@@ -115,64 +137,102 @@ function Channel() {
         const cleanName = channelName.trim();
         const cleanDescription = channelDescription.trim();
 
+        // Validate required fields before sending the request.
         if (!cleanName || !cleanDescription) {
             setError(
                 "Channel name and description are required"
             );
+            setMessage("");
             return;
         }
 
-        if (cleanName.length < 3) {
+        // Match the validation rules used by the Channel model.
+        if (cleanName.length < 2) {
             setError(
-                "Channel name must be at least 3 characters"
+                "Channel name must be at least 2 characters"
             );
+            setMessage("");
+            return;
+        }
+
+        if (cleanDescription.length < 5) {
+            setError(
+                "Channel description must be at least 5 characters"
+            );
+            setMessage("");
+            return;
+        }
+
+        if (cleanName.length > 50) {
+            setError(
+                "Channel name cannot exceed 50 characters"
+            );
+            setMessage("");
+            return;
+        }
+
+        if (cleanDescription.length > 500) {
+            setError(
+                "Channel description cannot exceed 500 characters"
+            );
+            setMessage("");
             return;
         }
 
         const token = localStorage.getItem("token");
+
+        if (!token) {
+            setError("Please login to create a channel");
+            setMessage("");
+            return;
+        }
 
         setCreatingChannel(true);
         setError("");
         setMessage("");
 
         // Send the new channel details to the protected backend endpoint.
-        axios.post(
-            "http://localhost:5050/api/channels",
-            {
-                name: cleanName,
-                description: cleanDescription
-            },
-            {
-                headers: {
-                    Authorization: `Bearer ${token}`
+        axios
+            .post(
+                "http://localhost:5050/api/channels",
+                {
+                    name: cleanName,
+                    description: cleanDescription
+                },
+                {
+                    headers: {
+                        Authorization: `Bearer ${token}`
+                    }
                 }
-            }
-        )
-        .then((response) => {
-            setChannel(response.data.channel);
-            setVideos([]);
+            )
+            .then((response) => {
+                setChannel(response.data.channel);
+                setVideos([]);
 
-            setChannelName("");
-            setChannelDescription("");
+                setChannelName("");
+                setChannelDescription("");
 
-            setMessage(
-                "Channel created successfully"
-            );
-        })
-        .catch((error) => {
-            console.log(
-                "CREATE CHANNEL ERROR:",
-                error.response?.data
-            );
+                setMessage(
+                    "Channel created successfully"
+                );
+            })
+            .catch((error) => {
+                console.log(
+                    "CREATE CHANNEL ERROR:",
+                    error.response?.data
+                );
 
-            setError(
-                error.response?.data?.message ||
-                "Failed to create channel"
-            );
-        })
-        .finally(() => {
-            setCreatingChannel(false);
-        });
+                // Display the actual backend validation/API message.
+                setError(
+                    error.response?.data?.message ||
+                    "Failed to create channel"
+                );
+
+                setMessage("");
+            })
+            .finally(() => {
+                setCreatingChannel(false);
+            });
     };
 
     // START EDITING CHANNEL
@@ -205,67 +265,104 @@ function Channel() {
         const cleanName = editChannelName.trim();
         const cleanDescription = editChannelDescription.trim();
 
+        // Validate required fields before sending the request.
         if (!cleanName || !cleanDescription) {
             setError(
                 "Channel name and description are required"
             );
+            setMessage("");
             return;
         }
 
-        if (cleanName.length < 3) {
+        // Match the validation rules used by the Channel model.
+        if (cleanName.length < 2) {
             setError(
-                "Channel name must be at least 3 characters"
+                "Channel name must be at least 2 characters"
             );
+            setMessage("");
+            return;
+        }
+
+        if (cleanDescription.length < 5) {
+            setError(
+                "Channel description must be at least 5 characters"
+            );
+            setMessage("");
+            return;
+        }
+
+        if (cleanName.length > 50) {
+            setError(
+                "Channel name cannot exceed 50 characters"
+            );
+            setMessage("");
+            return;
+        }
+
+        if (cleanDescription.length > 500) {
+            setError(
+                "Channel description cannot exceed 500 characters"
+            );
+            setMessage("");
             return;
         }
 
         const token = localStorage.getItem("token");
+
+        if (!token) {
+            setError("Please login to update your channel");
+            setMessage("");
+            return;
+        }
 
         setUpdatingChannel(true);
         setError("");
         setMessage("");
 
         // Update only the authenticated user's channel.
-        axios.put(
-            `http://localhost:5050/api/channels/${channel._id}`,
-            {
-                name: cleanName,
-                description: cleanDescription
-            },
-            {
-                headers: {
-                    Authorization: `Bearer ${token}`
+        axios
+            .put(
+                `http://localhost:5050/api/channels/${channel._id}`,
+                {
+                    name: cleanName,
+                    description: cleanDescription
+                },
+                {
+                    headers: {
+                        Authorization: `Bearer ${token}`
+                    }
                 }
-            }
-        )
-        .then((response) => {
-            setChannel(response.data.channel);
+            )
+            .then((response) => {
+                setChannel(response.data.channel);
 
-            setEditingChannel(false);
+                setEditingChannel(false);
 
-            setEditChannelName("");
-            setEditChannelDescription("");
+                setEditChannelName("");
+                setEditChannelDescription("");
 
-            setMessage(
-                "Channel updated successfully"
-            );
+                setMessage(
+                    "Channel updated successfully"
+                );
 
-            setError("");
-        })
-        .catch((error) => {
-            console.log(
-                "UPDATE CHANNEL ERROR:",
-                error.response?.data
-            );
+                setError("");
+            })
+            .catch((error) => {
+                console.log(
+                    "UPDATE CHANNEL ERROR:",
+                    error.response?.data
+                );
 
-            setError(
-                error.response?.data?.message ||
-                "Failed to update channel"
-            );
-        })
-        .finally(() => {
-            setUpdatingChannel(false);
-        });
+                setError(
+                    error.response?.data?.message ||
+                    "Failed to update channel"
+                );
+
+                setMessage("");
+            })
+            .finally(() => {
+                setUpdatingChannel(false);
+            });
     };
 
     // DELETE CHANNEL
@@ -280,45 +377,53 @@ function Channel() {
 
         const token = localStorage.getItem("token");
 
+        if (!token) {
+            setError("Please login to delete your channel");
+            return;
+        }
+
         setDeletingChannel(true);
         setError("");
         setMessage("");
 
         // Delete the channel through the protected backend endpoint.
-        axios.delete(
-            `http://localhost:5050/api/channels/${channel._id}`,
-            {
-                headers: {
-                    Authorization: `Bearer ${token}`
+        axios
+            .delete(
+                `http://localhost:5050/api/channels/${channel._id}`,
+                {
+                    headers: {
+                        Authorization: `Bearer ${token}`
+                    }
                 }
-            }
-        )
-        .then(() => {
-            setChannel(null);
-            setVideos([]);
+            )
+            .then(() => {
+                setChannel(null);
+                setVideos([]);
 
-            setEditingChannel(false);
+                setEditingChannel(false);
 
-            setMessage(
-                "Channel deleted successfully. You can create a new channel."
-            );
+                setMessage(
+                    "Channel deleted successfully. You can create a new channel."
+                );
 
-            setError("");
-        })
-        .catch((error) => {
-            console.log(
-                "DELETE CHANNEL ERROR:",
-                error.response?.data
-            );
+                setError("");
+            })
+            .catch((error) => {
+                console.log(
+                    "DELETE CHANNEL ERROR:",
+                    error.response?.data
+                );
 
-            setError(
-                error.response?.data?.message ||
-                "Failed to delete channel"
-            );
-        })
-        .finally(() => {
-            setDeletingChannel(false);
-        });
+                setError(
+                    error.response?.data?.message ||
+                    "Failed to delete channel"
+                );
+
+                setMessage("");
+            })
+            .finally(() => {
+                setDeletingChannel(false);
+            });
     };
 
     // DELETE VIDEO
@@ -333,47 +438,55 @@ function Channel() {
 
         const token = localStorage.getItem("token");
 
+        if (!token) {
+            setError("Please login to delete this video");
+            return;
+        }
+
         setDeletingVideoId(videoId);
         setError("");
         setMessage("");
 
         // The backend verifies that the logged-in user owns the video.
-        axios.delete(
-            `http://localhost:5050/api/videos/${videoId}`,
-            {
-                headers: {
-                    Authorization: `Bearer ${token}`
+        axios
+            .delete(
+                `http://localhost:5050/api/videos/${videoId}`,
+                {
+                    headers: {
+                        Authorization: `Bearer ${token}`
+                    }
                 }
-            }
-        )
-        .then(() => {
-            // Remove the deleted video from the current page immediately.
-            setVideos((previousVideos) =>
-                previousVideos.filter(
-                    (video) => video._id !== videoId
-                )
-            );
+            )
+            .then(() => {
+                // Remove the deleted video from the current page immediately.
+                setVideos((previousVideos) =>
+                    previousVideos.filter(
+                        (video) => video._id !== videoId
+                    )
+                );
 
-            setMessage(
-                "Video deleted successfully"
-            );
+                setMessage(
+                    "Video deleted successfully"
+                );
 
-            setError("");
-        })
-        .catch((error) => {
-            console.log(
-                "DELETE VIDEO ERROR:",
-                error.response?.data
-            );
+                setError("");
+            })
+            .catch((error) => {
+                console.log(
+                    "DELETE VIDEO ERROR:",
+                    error.response?.data
+                );
 
-            setError(
-                error.response?.data?.message ||
-                "Failed to delete video"
-            );
-        })
-        .finally(() => {
-            setDeletingVideoId(null);
-        });
+                setError(
+                    error.response?.data?.message ||
+                    "Failed to delete video"
+                );
+
+                setMessage("");
+            })
+            .finally(() => {
+                setDeletingVideoId(null);
+            });
     };
 
     // START EDITING VIDEO
@@ -425,6 +538,7 @@ function Channel() {
             setError(
                 "All video fields are required"
             );
+            setMessage("");
             return;
         }
 
@@ -432,6 +546,7 @@ function Channel() {
             setError(
                 "Please enter a valid video URL"
             );
+            setMessage("");
             return;
         }
 
@@ -439,69 +554,79 @@ function Channel() {
             setError(
                 "Please enter a valid thumbnail URL"
             );
+            setMessage("");
             return;
         }
 
         const token = localStorage.getItem("token");
+
+        if (!token) {
+            setError("Please login to update this video");
+            setMessage("");
+            return;
+        }
 
         setUpdatingVideo(true);
         setError("");
         setMessage("");
 
         // Update the selected video through the protected API.
-        axios.put(
-            `http://localhost:5050/api/videos/${videoId}`,
-            {
-                title: cleanTitle,
-                category,
-                description: cleanDescription,
-                videoUrl: cleanVideoUrl,
-                thumbnailUrl: cleanThumbnailUrl
-            },
-            {
-                headers: {
-                    Authorization: `Bearer ${token}`
+        axios
+            .put(
+                `http://localhost:5050/api/videos/${videoId}`,
+                {
+                    title: cleanTitle,
+                    category,
+                    description: cleanDescription,
+                    videoUrl: cleanVideoUrl,
+                    thumbnailUrl: cleanThumbnailUrl
+                },
+                {
+                    headers: {
+                        Authorization: `Bearer ${token}`
+                    }
                 }
-            }
-        )
-        .then((response) => {
-            // Replace the old video with the updated version in local state.
-            setVideos((previousVideos) =>
-                previousVideos.map((video) =>
-                    video._id === videoId
-                        ? response.data.video
-                        : video
-                )
-            );
+            )
+            .then((response) => {
+                // Replace the old video with the updated version in local state.
+                setVideos((previousVideos) =>
+                    previousVideos.map((video) =>
+                        video._id === videoId
+                            ? response.data.video
+                            : video
+                    )
+                );
 
-            setEditingVideoId(null);
+                setEditingVideoId(null);
 
-            setTitle("");
-            setCategory("Entertainment");
-            setDescription("");
-            setVideoUrl("");
-            setThumbnailUrl("");
+                setTitle("");
+                setCategory("Entertainment");
+                setDescription("");
+                setVideoUrl("");
+                setThumbnailUrl("");
 
-            setMessage(
-                "Video updated successfully"
-            );
+                setMessage(
+                    "Video updated successfully"
+                );
 
-            setError("");
-        })
-        .catch((error) => {
-            console.log(
-                "UPDATE VIDEO ERROR:",
-                error.response?.data
-            );
+                setError("");
+            })
+            .catch((error) => {
+                console.log(
+                    "UPDATE VIDEO ERROR:",
+                    error.response?.data
+                );
 
-            setError(
-                error.response?.data?.message ||
-                "Failed to update video"
-            );
-        })
-        .finally(() => {
-            setUpdatingVideo(false);
-        });
+                setError(
+                    error.response?.data?.message ||
+                    "Failed to update video"
+                );
+
+                setMessage("");
+            })
+            .finally(() => {
+                setUpdatingVideo(false);
+            });
     };
 
     // INITIAL LOADING SCREEN
@@ -513,8 +638,20 @@ function Channel() {
         );
     }
 
+    // LOGIN ERROR
+    if (!localStorage.getItem("token")) {
+        return (
+            <div className="channel-error">
+                <p>{error || "Please login to access your channel"}</p>
+            </div>
+        );
+    }
+
     // CREATE CHANNEL SCREEN
-    if (!channel && !error) {
+    // IMPORTANT:
+    // We check only !channel here so validation errors stay inside
+    // the Create Channel form instead of replacing the entire screen.
+    if (!channel) {
         return (
             <div className="channel-page">
 
@@ -539,11 +676,11 @@ function Channel() {
                             type="text"
                             placeholder="Enter channel name"
                             value={channelName}
-                            onChange={(e) =>
-                                setChannelName(
-                                    e.target.value
-                                )
-                            }
+                            onChange={(e) => {
+                                setChannelName(e.target.value);
+                                setError("");
+                                setMessage("");
+                            }}
                             maxLength={50}
                         />
 
@@ -554,11 +691,13 @@ function Channel() {
                         <textarea
                             placeholder="Tell viewers about your channel"
                             value={channelDescription}
-                            onChange={(e) =>
+                            onChange={(e) => {
                                 setChannelDescription(
                                     e.target.value
-                                )
-                            }
+                                );
+                                setError("");
+                                setMessage("");
+                            }}
                             maxLength={500}
                         />
 
@@ -575,6 +714,7 @@ function Channel() {
                         )}
 
                         <button
+                            type="button"
                             className="create-channel-button"
                             onClick={handleCreateChannel}
                             disabled={creatingChannel}
@@ -588,15 +728,6 @@ function Channel() {
 
                 </div>
 
-            </div>
-        );
-    }
-
-    // ERROR SCREEN
-    if (error && !channel) {
-        return (
-            <div className="channel-error">
-                <p>{error}</p>
             </div>
         );
     }
@@ -672,9 +803,16 @@ function Channel() {
                                 maxLength={500}
                             />
 
+                            {error && (
+                                <div className="error-message">
+                                    {error}
+                                </div>
+                            )}
+
                             <div className="channel-edit-buttons">
 
                                 <button
+                                    type="button"
                                     className="save-button"
                                     onClick={
                                         handleUpdateChannel
@@ -687,6 +825,7 @@ function Channel() {
                                 </button>
 
                                 <button
+                                    type="button"
                                     className="cancel-button"
                                     onClick={
                                         handleCancelChannelEdit
@@ -710,6 +849,7 @@ function Channel() {
                 <div className="channel-actions">
 
                     <button
+                        type="button"
                         onClick={() =>
                             navigate("/upload")
                         }
@@ -719,6 +859,7 @@ function Channel() {
                     </button>
 
                     <button
+                        type="button"
                         onClick={handleEditChannel}
                         className="edit-channel-button"
                         disabled={deletingChannel}
@@ -727,6 +868,7 @@ function Channel() {
                     </button>
 
                     <button
+                        type="button"
                         onClick={handleDeleteChannel}
                         className="delete-channel-button"
                         disabled={deletingChannel}
@@ -747,7 +889,7 @@ function Channel() {
             )}
 
             {/* ERROR MESSAGE */}
-            {error && (
+            {error && !editingChannel && (
                 <div className="error-message">
                     {error}
                 </div>
@@ -774,6 +916,7 @@ function Channel() {
                     </p>
 
                     <button
+                        type="button"
                         onClick={() =>
                             navigate("/upload")
                         }
@@ -907,6 +1050,7 @@ function Channel() {
                                     <div className="edit-buttons">
 
                                         <button
+                                            type="button"
                                             className="save-button"
                                             onClick={() =>
                                                 handleUpdateVideo(
@@ -921,6 +1065,7 @@ function Channel() {
                                         </button>
 
                                         <button
+                                            type="button"
                                             className="cancel-button"
                                             onClick={
                                                 handleCancelEdit
@@ -980,7 +1125,7 @@ function Channel() {
                                         </p>
 
                                         <p className="video-stats">
-                                            {video.views} views
+                                            {video.views || 0} views
                                         </p>
 
                                         <p className="video-description">
@@ -992,6 +1137,7 @@ function Channel() {
                                     <div className="video-actions">
 
                                         <button
+                                            type="button"
                                             className="edit-button"
                                             onClick={() =>
                                                 handleEditVideo(
@@ -1007,6 +1153,7 @@ function Channel() {
                                         </button>
 
                                         <button
+                                            type="button"
                                             className="delete-button"
                                             onClick={() =>
                                                 handleDeleteVideo(
