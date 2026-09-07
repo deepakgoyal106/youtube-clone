@@ -1,0 +1,58 @@
+[{
+  "_id": {
+    "$oid": "6a9ed2002b988c51f299bd0c"
+  },
+  "title": "Big Buck Bunny Test Video",
+  "category": "Entertainment",
+  "description": "This is a test video uploaded to my MERN YouTube Clone.",
+  "videoUrl": "https://www.w3schools.com/html/mov_bbb.mp4",
+  "thumbnailUrl": "https://peach.blender.org/wp-content/uploads/title_anouncement.jpg",
+  "channel": {
+    "$oid": "6a9ed14f2b988c51f299bd0b"
+  },
+  "uploader": {
+    "$oid": "6a9a9c5e14faf79fce3bcd38"
+  },
+  "views": 2,
+  "likes": 0,
+  "dislikes": 0,
+  "uploadDate": {
+    "$date": "2026-09-07T15:02:24.783Z"
+  },
+  "createdAt": {
+    "$date": "2026-09-07T15:02:24.784Z"
+  },
+  "updatedAt": {
+    "$date": "2026-09-07T15:31:03.488Z"
+  },
+  "__v": 0
+},
+{
+  "_id": {
+    "$oid": "6a9ed924770649cc233957bd"
+  },
+  "title": "Javascript",
+  "category": "Coding",
+  "description": "Test is done",
+  "videoUrl": "https://assets.testfiles.dev/video/sample-3s.mp4",
+  "thumbnailUrl": "https://placehold.co/1280x720/png?text=JavaScript+Basics",
+  "channel": {
+    "$oid": "6a9ed14f2b988c51f299bd0b"
+  },
+  "uploader": {
+    "$oid": "6a9a9c5e14faf79fce3bcd38"
+  },
+  "views": 1,
+  "likes": 0,
+  "dislikes": 0,
+  "uploadDate": {
+    "$date": "2026-09-07T15:32:52.884Z"
+  },
+  "createdAt": {
+    "$date": "2026-09-07T15:32:52.885Z"
+  },
+  "updatedAt": {
+    "$date": "2026-09-07T15:32:59.054Z"
+  },
+  "__v": 0
+}]

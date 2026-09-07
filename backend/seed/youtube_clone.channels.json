@@ -1,0 +1,28 @@
+[{
+  "_id": {
+    "$oid": "6a97e5826b78070678ac2644"
+  },
+  "name": "My YouTube Channel",
+  "description": "My first channel",
+  "owner": {
+    "$oid": "6a97cbbedf7a2fe30406550d"
+  },
+  "__v": 0
+},
+{
+  "_id": {
+    "$oid": "6a9ed14f2b988c51f299bd0b"
+  },
+  "name": "Coding",
+  "description": "PHP worksr",
+  "owner": {
+    "$oid": "6a9a9c5e14faf79fce3bcd38"
+  },
+  "createdAt": {
+    "$date": "2026-09-07T14:59:27.280Z"
+  },
+  "updatedAt": {
+    "$date": "2026-09-07T15:40:21.434Z"
+  },
+  "__v": 0
+}]

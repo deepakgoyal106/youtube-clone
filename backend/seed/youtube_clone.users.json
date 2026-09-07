@@ -1,0 +1,42 @@
+[{
+  "_id": {
+    "$oid": "6a97cbbedf7a2fe30406550d"
+  },
+  "username": "testuser",
+  "email": "test@gmail.com",
+  "password": "$2b$10$BjrnJOrvpgxYBsXy.RfqZOXxiAQ.9M7vNaP.tGq39fsGgo8IaDit.",
+  "__v": 0
+},
+{
+  "_id": {
+    "$oid": "6a9a9bce14faf79fce3bcd37"
+  },
+  "username": "j",
+  "email": "deepakgoyal106@gmail.com",
+  "password": "$2b$10$3r/GBgSY/W3Yv/6H/SyQ8eu/EffxS4czlBCq3uTBI4Kt5V8kLP606",
+  "__v": 0
+},
+{
+  "_id": {
+    "$oid": "6a9a9c5e14faf79fce3bcd38"
+  },
+  "username": "deepak",
+  "email": "deepakgoyal1060@gmail.com",
+  "password": "$2b$10$JdA8zAaQ2b7hRp8YU3QWheKWc00l2FrrgoCTp5Hf.fc7dZjFMjOwC",
+  "__v": 0
+},
+{
+  "_id": {
+    "$oid": "6a9edaf7770649cc233957be"
+  },
+  "username": "deepakgoyal106rr0@gmail.com",
+  "email": "deepakgoyal106rr0@gmail.com",
+  "password": "$2b$10$SG3r6xJDJdokRRlgdSAbzOv15LeDd3jGbZmn8g4XYGGveCY.gCWlG",
+  "createdAt": {
+    "$date": "2026-09-07T15:40:39.393Z"
+  },
+  "updatedAt": {
+    "$date": "2026-09-07T15:40:39.393Z"
+  },
+  "__v": 0
+}]

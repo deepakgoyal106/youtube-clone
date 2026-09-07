@@ -1,0 +1,38 @@
+[{
+  "_id": {
+    "$oid": "6a9bcdc4d9d43ad28f31a752"
+  },
+  "text": "great",
+  "video": {
+    "$oid": "6a985d67e03c77556e9e24b8"
+  },
+  "user": {
+    "$oid": "6a9a9c5e14faf79fce3bcd38"
+  },
+  "createdAt": {
+    "$date": "2026-09-05T08:07:32.556Z"
+  },
+  "updatedAt": {
+    "$date": "2026-09-05T08:07:32.556Z"
+  },
+  "__v": 0
+},
+{
+  "_id": {
+    "$oid": "6a9e756141e20673523a8ed0"
+  },
+  "text": "Great demo video!",
+  "video": {
+    "$oid": "6a9e756141e20673523a8ecd"
+  },
+  "user": {
+    "$oid": "6a9e756141e20673523a8ecb"
+  },
+  "createdAt": {
+    "$date": "2026-09-07T08:27:13.622Z"
+  },
+  "updatedAt": {
+    "$date": "2026-09-07T08:27:13.622Z"
+  },
+  "__v": 0
+}]
