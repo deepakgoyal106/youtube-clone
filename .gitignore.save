@@ -11,4 +11,5 @@ dist/
 .DS_Store
 
 # MongoDB backup
-youtube-clone-db-backup/
+youtube-clone-db-backup/cat .gitignore
+
