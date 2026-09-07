@@ -7,22 +7,39 @@ import "./VideoPlayer.css";
 function VideoPlayer() {
     const { id } = useParams();
 
+    // Store the selected video's details and its comments.
     const [video, setVideo] = useState(null);
     const [comments, setComments] = useState([]);
 
+    // Store the new comment entered by the logged-in user.
     const [commentText, setCommentText] = useState("");
 
+    // Track which comment is currently being edited.
     const [editingCommentId, setEditingCommentId] =
         useState(null);
 
     const [editingText, setEditingText] = useState("");
 
+    // Display API errors and user feedback messages.
     const [error, setError] = useState("");
     const [message, setMessage] = useState("");
 
+    // Track loading states to prevent duplicate actions.
+    const [commentsLoading, setCommentsLoading] =
+        useState(true);
+
+    const [commentSubmitting, setCommentSubmitting] =
+        useState(false);
+
+    const [actionLoading, setActionLoading] =
+        useState(false);
+
+    // Prevent the same video view from being counted more than once
+    // during the current component lifecycle.
     const viewCountedId = useRef(null);
 
     // LOAD VIDEO
+    // Fetch the selected video's information from the backend.
     useEffect(() => {
         setVideo(null);
         setError("");
@@ -47,6 +64,7 @@ function VideoPlayer() {
     }, [id]);
 
     // INCREMENT VIEWS
+    // Increase the video's view count when the video page is opened.
     useEffect(() => {
         if (viewCountedId.current === id) {
             return;
@@ -78,7 +96,10 @@ function VideoPlayer() {
     }, [id]);
 
     // LOAD COMMENTS
+    // Comments are stored in MongoDB and fetched for the selected video.
     useEffect(() => {
+        setCommentsLoading(true);
+
         axios.get(
             `http://localhost:5050/api/comments/video/${id}`
         )
@@ -90,10 +111,18 @@ function VideoPlayer() {
                 "COMMENTS ERROR:",
                 error.response?.data
             );
+
+            setMessage(
+                "Failed to load comments"
+            );
+        })
+        .finally(() => {
+            setCommentsLoading(false);
         });
     }, [id]);
 
-    // LIKE
+    // LIKE VIDEO
+    // Only authenticated users are allowed to like a video.
     const handleLike = () => {
         const token = localStorage.getItem("token");
 
@@ -103,6 +132,8 @@ function VideoPlayer() {
             );
             return;
         }
+
+        setActionLoading(true);
 
         axios.put(
             `http://localhost:5050/api/videos/${id}/like`,
@@ -127,10 +158,14 @@ function VideoPlayer() {
                 error.response?.data?.message ||
                 "Failed to like video"
             );
+        })
+        .finally(() => {
+            setActionLoading(false);
         });
     };
 
-    // DISLIKE
+    // DISLIKE VIDEO
+    // Only authenticated users are allowed to dislike a video.
     const handleDislike = () => {
         const token = localStorage.getItem("token");
 
@@ -140,6 +175,8 @@ function VideoPlayer() {
             );
             return;
         }
+
+        setActionLoading(true);
 
         axios.put(
             `http://localhost:5050/api/videos/${id}/dislike`,
@@ -164,10 +201,14 @@ function VideoPlayer() {
                 error.response?.data?.message ||
                 "Failed to dislike video"
             );
+        })
+        .finally(() => {
+            setActionLoading(false);
         });
     };
 
     // ADD COMMENT
+    // Create a new comment and immediately add it to the local comment list.
     const handleAddComment = () => {
         const token = localStorage.getItem("token");
 
@@ -178,17 +219,21 @@ function VideoPlayer() {
             return;
         }
 
-        if (!commentText.trim()) {
+        const cleanComment = commentText.trim();
+
+        if (!cleanComment) {
             setMessage(
                 "Comment cannot be empty"
             );
             return;
         }
 
+        setCommentSubmitting(true);
+
         axios.post(
             `http://localhost:5050/api/comments/video/${id}`,
             {
-                text: commentText
+                text: cleanComment
             },
             {
                 headers: {
@@ -213,10 +258,14 @@ function VideoPlayer() {
                 error.response?.data?.message ||
                 "Failed to add comment"
             );
+        })
+        .finally(() => {
+            setCommentSubmitting(false);
         });
     };
 
-    // START EDIT
+    // START COMMENT EDIT
+    // Populate the edit form with the selected comment's existing text.
     const handleEditComment = (comment) => {
         setEditingCommentId(comment._id);
         setEditingText(comment.text);
@@ -224,6 +273,7 @@ function VideoPlayer() {
     };
 
     // UPDATE COMMENT
+    // Send the edited comment to the backend and update the UI.
     const handleUpdateComment = (commentId) => {
         const token = localStorage.getItem("token");
 
@@ -234,17 +284,21 @@ function VideoPlayer() {
             return;
         }
 
-        if (!editingText.trim()) {
+        const cleanText = editingText.trim();
+
+        if (!cleanText) {
             setMessage(
                 "Comment cannot be empty"
             );
             return;
         }
 
+        setCommentSubmitting(true);
+
         axios.put(
             `http://localhost:5050/api/comments/${commentId}`,
             {
-                text: editingText
+                text: cleanText
             },
             {
                 headers: {
@@ -273,10 +327,14 @@ function VideoPlayer() {
                 error.response?.data?.message ||
                 "Failed to edit comment"
             );
+        })
+        .finally(() => {
+            setCommentSubmitting(false);
         });
     };
 
     // DELETE COMMENT
+    // Ask for confirmation before permanently deleting a comment.
     const handleDeleteComment = (commentId) => {
         const token = localStorage.getItem("token");
 
@@ -287,6 +345,16 @@ function VideoPlayer() {
             return;
         }
 
+        const confirmDelete = window.confirm(
+            "Are you sure you want to delete this comment?"
+        );
+
+        if (!confirmDelete) {
+            return;
+        }
+
+        setCommentSubmitting(true);
+
         axios.delete(
             `http://localhost:5050/api/comments/${commentId}`,
             {
@@ -296,6 +364,7 @@ function VideoPlayer() {
             }
         )
         .then(() => {
+            // Remove the deleted comment from the current UI.
             setComments((previousComments) =>
                 previousComments.filter(
                     (comment) =>
@@ -312,15 +381,19 @@ function VideoPlayer() {
                 error.response?.data?.message ||
                 "Failed to delete comment"
             );
+        })
+        .finally(() => {
+            setCommentSubmitting(false);
         });
     };
 
-    // CANCEL EDIT
+    // CANCEL COMMENT EDIT
     const handleCancelEdit = () => {
         setEditingCommentId(null);
         setEditingText("");
     };
 
+    // Show a loading message while the video is being fetched.
     if (!video && !error) {
         return (
             <div className="video-loading">
@@ -329,6 +402,7 @@ function VideoPlayer() {
         );
     }
 
+    // Show a friendly error when the video cannot be loaded.
     if (error) {
         return (
             <div className="video-error">
@@ -340,15 +414,16 @@ function VideoPlayer() {
     const channelName =
         video.channel?.name || "Unknown Channel";
 
+    // Use the first letter of the channel name as a simple avatar.
     const avatarLetter =
         channelName.charAt(0).toUpperCase();
 
     return (
         <div className="video-player-page">
 
-            {/* VIDEO */}
-
+            {/* VIDEO PLAYER */}
             <div className="video-player-wrapper">
+
                 <video
                     className="video-player"
                     controls
@@ -357,16 +432,15 @@ function VideoPlayer() {
                     Your browser does not support
                     video playback.
                 </video>
+
             </div>
 
-            {/* TITLE */}
-
+            {/* VIDEO TITLE */}
             <h1 className="video-player-title">
                 {video.title}
             </h1>
 
-            {/* META */}
-
+            {/* CHANNEL AND VIDEO STATISTICS */}
             <div className="video-meta">
 
                 <div className="video-channel-info">
@@ -389,11 +463,13 @@ function VideoPlayer() {
 
                 </div>
 
+                {/* LIKE / DISLIKE CONTROLS */}
                 <div className="video-reactions">
 
                     <button
                         className="reaction-button"
                         onClick={handleLike}
+                        disabled={actionLoading}
                     >
                         👍 {video.likes}
                     </button>
@@ -401,6 +477,7 @@ function VideoPlayer() {
                     <button
                         className="reaction-button"
                         onClick={handleDislike}
+                        disabled={actionLoading}
                     >
                         👎 {video.dislikes}
                     </button>
@@ -409,30 +486,30 @@ function VideoPlayer() {
 
             </div>
 
-            {/* MESSAGE */}
-
+            {/* USER FEEDBACK MESSAGE */}
             {message && (
                 <div className="video-message">
                     {message}
                 </div>
             )}
 
-            {/* DESCRIPTION */}
-
+            {/* VIDEO DESCRIPTION */}
             <div className="video-description">
+
                 <p>
                     {video.description}
                 </p>
+
             </div>
 
-            {/* COMMENTS */}
-
+            {/* COMMENTS SECTION */}
             <section className="comments-section">
 
                 <h2>
                     Comments ({comments.length})
                 </h2>
 
+                {/* NEW COMMENT FORM */}
                 <div className="comment-form">
 
                     <textarea
@@ -443,24 +520,38 @@ function VideoPlayer() {
                                 e.target.value
                             )
                         }
+                        maxLength={500}
                     />
 
                     <button
                         className="comment-submit"
                         onClick={handleAddComment}
+                        disabled={commentSubmitting}
                     >
-                        Comment
+                        {commentSubmitting
+                            ? "Posting..."
+                            : "Comment"}
                     </button>
 
                 </div>
 
+                {/* COMMENT LIST */}
                 <div className="comment-list">
 
-                    {comments.length === 0 ? (
+                    {commentsLoading ? (
+
+                        <div className="no-comments">
+                            Loading comments...
+                        </div>
+
+                    ) : comments.length === 0 ? (
+
                         <div className="no-comments">
                             No comments yet.
                         </div>
+
                     ) : (
+
                         comments.map((comment) => {
 
                             const username =
@@ -473,6 +564,7 @@ function VideoPlayer() {
                                     className="comment-item"
                                 >
 
+                                    {/* COMMENT USER AVATAR */}
                                     <div className="comment-avatar">
                                         {username
                                             .charAt(0)
@@ -485,6 +577,7 @@ function VideoPlayer() {
                                             {username}
                                         </p>
 
+                                        {/* EDIT MODE */}
                                         {editingCommentId ===
                                         comment._id ? (
 
@@ -499,6 +592,7 @@ function VideoPlayer() {
                                                             e.target.value
                                                         )
                                                     }
+                                                    maxLength={500}
                                                 />
 
                                                 <div className="comment-edit-buttons">
@@ -510,14 +604,22 @@ function VideoPlayer() {
                                                                 comment._id
                                                             )
                                                         }
+                                                        disabled={
+                                                            commentSubmitting
+                                                        }
                                                     >
-                                                        Save
+                                                        {commentSubmitting
+                                                            ? "Saving..."
+                                                            : "Save"}
                                                     </button>
 
                                                     <button
                                                         className="comment-cancel-button"
                                                         onClick={
                                                             handleCancelEdit
+                                                        }
+                                                        disabled={
+                                                            commentSubmitting
                                                         }
                                                     >
                                                         Cancel
@@ -529,6 +631,7 @@ function VideoPlayer() {
 
                                         ) : (
 
+                                            /* NORMAL COMMENT DISPLAY */
                                             <>
                                                 <p className="comment-text">
                                                     {comment.text}
@@ -543,6 +646,9 @@ function VideoPlayer() {
                                                                 comment
                                                             )
                                                         }
+                                                        disabled={
+                                                            commentSubmitting
+                                                        }
                                                     >
                                                         Edit
                                                     </button>
@@ -553,6 +659,9 @@ function VideoPlayer() {
                                                             handleDeleteComment(
                                                                 comment._id
                                                             )
+                                                        }
+                                                        disabled={
+                                                            commentSubmitting
                                                         }
                                                     >
                                                         Delete
@@ -568,6 +677,7 @@ function VideoPlayer() {
                                 </div>
                             );
                         })
+
                     )}
 
                 </div>
