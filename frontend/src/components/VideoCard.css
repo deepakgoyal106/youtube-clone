@@ -1,37 +1,57 @@
-.layout {
-    display: flex;
+.video-card {
     width: 100%;
-}
-
-.main-content {
-    flex: 1;
     min-width: 0;
-    padding: 20px;
+    cursor: pointer;
 }
 
-/* Video grid */
-.video-grid {
-    display: grid;
-    grid-template-columns: repeat(3, 1fr);
-    gap: 24px 18px;
+/* Keeps every video thumbnail at the same 16:9 ratio. */
+.video-thumbnail-container {
+    width: 100%;
+    aspect-ratio: 16 / 9;
+    overflow: hidden;
+    border-radius: 8px;
+    background: #f1f1f1;
 }
 
-/* Tablet */
-@media (max-width: 1100px) {
-    .video-grid {
-        grid-template-columns: repeat(2, 1fr);
-        gap: 20px 15px;
-    }
+/* Makes the image fill the fixed thumbnail container. */
+.video-thumbnail {
+    width: 100%;
+    height: 100%;
+    display: block;
+    object-fit: cover;
+}
+
+/* Video title and metadata. */
+.video-info {
+    padding-top: 10px;
+}
+
+.video-info h3 {
+    margin: 0 0 6px;
+    font-size: 16px;
+    line-height: 1.35;
+
+    /* Prevent extremely long titles from making cards uneven. */
+    display: -webkit-box;
+    -webkit-line-clamp: 2;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+}
+
+.video-info p {
+    margin: 3px 0;
+    color: #606060;
+    font-size: 14px;
+    line-height: 1.3;
 }
 
 /* Mobile */
 @media (max-width: 600px) {
-    .main-content {
-        padding: 12px;
+    .video-info h3 {
+        font-size: 15px;
     }
 
-    .video-grid {
-        grid-template-columns: 1fr;
-        gap: 15px;
+    .video-info p {
+        font-size: 13px;
     }
 }
