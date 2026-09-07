@@ -18,7 +18,6 @@ function App() {
     const [sidebarOpen, setSidebarOpen] = useState(true);
 
     const toggleSidebar = () => {
-        console.log("TOGGLE SIDEBAR");
         setSidebarOpen((previousState) => !previousState);
     };
 
@@ -46,6 +45,7 @@ function App() {
                             element={
                                 <Home
                                     searchTerm={searchTerm}
+                                    setSearchTerm={setSearchTerm}
                                 />
                             }
                         />
