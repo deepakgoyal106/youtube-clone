@@ -1,307 +1,254 @@
 import Video from "../models/Video.js";
 import Channel from "../models/Channel.js";
 
+// Check whether a value is a valid URL.
+const isValidUrl = (value) => {
+    try {
+        new URL(value);
+        return true;
+    } catch {
+        return false;
+    }
+};
 
 // CREATE VIDEO
-const createVideo = (req, res) => {
+const createVideo = async (req, res) => {
+    try {
+        const {
+            title,
+            category,
+            description,
+            videoUrl,
+            thumbnailUrl,
+            channelId
+        } = req.body;
 
-    const {
-        title,
-        category,
-        description,
-        videoUrl,
-        thumbnailUrl,
-        channelId
-    } = req.body;
+        // Validate all required fields before accessing the database.
+        if (
+            !title?.trim() ||
+            !category?.trim() ||
+            !description?.trim() ||
+            !videoUrl?.trim() ||
+            !thumbnailUrl?.trim() ||
+            !channelId
+        ) {
+            return res.status(400).json({
+                message: "All video fields are required"
+            });
+        }
 
-    if (
-        !title ||
-        !category ||
-        !description ||
-        !videoUrl ||
-        !thumbnailUrl ||
-        !channelId
-    ) {
-        return res.status(400).json({
-            message: "All video fields are required"
+        // Validate URL fields before saving them to MongoDB.
+        if (!isValidUrl(videoUrl.trim())) {
+            return res.status(400).json({
+                message: "Please provide a valid video URL"
+            });
+        }
+
+        if (!isValidUrl(thumbnailUrl.trim())) {
+            return res.status(400).json({
+                message: "Please provide a valid thumbnail URL"
+            });
+        }
+
+        const channel = await Channel.findById(channelId);
+
+        if (!channel) {
+            return res.status(404).json({
+                message: "Channel not found"
+            });
+        }
+
+        // Only the channel owner can upload videos to that channel.
+        if (channel.owner.toString() !== req.user.userId) {
+            return res.status(403).json({
+                message:
+                    "You are not allowed to upload to this channel"
+            });
+        }
+
+        const video = await Video.create({
+            title: title.trim(),
+            category: category.trim(),
+            description: description.trim(),
+            videoUrl: videoUrl.trim(),
+            thumbnailUrl: thumbnailUrl.trim(),
+            channel: channelId,
+            uploader: req.user.userId
+        });
+
+        res.status(201).json({
+            message: "Video created successfully",
+            video
+        });
+    } catch (error) {
+        console.error("CREATE VIDEO ERROR:", error);
+
+        res.status(500).json({
+            message: "Failed to create video"
         });
     }
-
-    Channel.findById(channelId)
-        .then((channel) => {
-
-            if (!channel) {
-                return res.status(404).json({
-                    message: "Channel not found"
-                });
-            }
-
-            if (channel.owner.toString() !== req.user.userId) {
-                return res.status(403).json({
-                    message:
-                        "You are not allowed to upload to this channel"
-                });
-            }
-
-            const newVideo = new Video({
-                title: title,
-                category: category,
-                description: description,
-                videoUrl: videoUrl,
-                thumbnailUrl: thumbnailUrl,
-                channel: channelId,
-                uploader: req.user.userId
-            });
-
-            return newVideo.save();
-        })
-        .then((video) => {
-
-            if (video) {
-                res.status(201).json({
-                    message: "Video created successfully",
-                    video: video
-                });
-            }
-
-        })
-        .catch((error) => {
-
-            console.log(
-                "Error creating video:",
-                error
-            );
-
-            res.status(500).json({
-                message: "Failed to create video"
-            });
-
-        });
 };
-
 
 // GET ALL VIDEOS
-const getVideos = (req, res) => {
+const getVideos = async (req, res) => {
+    try {
+        const videos = await Video.find()
+            .sort({ uploadDate: -1 })
+            .populate("channel")
+            .populate("uploader", "-password");
 
-    Video.find()
-        .sort({
-            uploadDate: -1
-        })
-        .populate("channel")
-        .populate("uploader", "-password")
-
-        .then((videos) => {
-
-            res.status(200).json({
-                videos: videos
-            });
-
-        })
-        .catch((error) => {
-
-            console.log(
-                "Error fetching videos:",
-                error
-            );
-
-            res.status(500).json({
-                message: "Failed to fetch videos"
-            });
-
+        res.status(200).json({
+            videos
         });
-};
+    } catch (error) {
+        console.error("GET VIDEOS ERROR:", error);
 
+        res.status(500).json({
+            message: "Failed to fetch videos"
+        });
+    }
+};
 
 // GET SINGLE VIDEO
-const getVideo = (req, res) => {
+const getVideo = async (req, res) => {
+    try {
+        const video = await Video.findById(req.params.id)
+            .populate("channel")
+            .populate("uploader", "-password");
 
-    const videoId = req.params.id;
-
-    Video.findById(videoId)
-        .populate("channel")
-        .populate("uploader", "-password")
-
-        .then((video) => {
-
-            if (!video) {
-                return res.status(404).json({
-                    message: "Video not found"
-                });
-            }
-
-            res.status(200).json({
-                video: video
+        if (!video) {
+            return res.status(404).json({
+                message: "Video not found"
             });
+        }
 
-        })
-        .catch((error) => {
-
-            console.log(
-                "Error fetching video:",
-                error
-            );
-
-            res.status(500).json({
-                message: "Failed to fetch video"
-            });
-
+        res.status(200).json({
+            video
         });
-};
+    } catch (error) {
+        console.error("GET VIDEO ERROR:", error);
 
+        res.status(500).json({
+            message: "Failed to fetch video"
+        });
+    }
+};
 
 // UPDATE VIDEO
-const updateVideo = (req, res) => {
+const updateVideo = async (req, res) => {
+    try {
+        const {
+            title,
+            category,
+            description,
+            videoUrl,
+            thumbnailUrl
+        } = req.body;
 
-    const videoId = req.params.id;
-
-    const {
-        title,
-        category,
-        description,
-        videoUrl,
-        thumbnailUrl
-    } = req.body;
-
-    Video.findById(videoId)
-
-        .then((video) => {
-
-            if (!video) {
-                return res.status(404).json({
-                    message: "Video not found"
-                });
-            }
-
-            // Check video owner
-            if (
-                video.uploader.toString() !==
-                req.user.userId
-            ) {
-                return res.status(403).json({
-                    message:
-                        "You are not allowed to edit this video"
-                });
-            }
-
-            // Update fields
-            video.title =
-                title || video.title;
-
-            video.category =
-                category || video.category;
-
-            video.description =
-                description || video.description;
-
-            video.videoUrl =
-                videoUrl || video.videoUrl;
-
-            video.thumbnailUrl =
-                thumbnailUrl || video.thumbnailUrl;
-
-            return video.save();
-
-        })
-        .then((updatedVideo) => {
-
-            if (updatedVideo) {
-
-                res.status(200).json({
-                    message: "Video updated successfully",
-                    video: updatedVideo
-                });
-
-            }
-
-        })
-        .catch((error) => {
-
-            console.log(
-                "Error updating video:",
-                error
-            );
-
-            res.status(500).json({
-                message: "Failed to update video"
+        // Validate required fields for a complete video update.
+        if (
+            !title?.trim() ||
+            !category?.trim() ||
+            !description?.trim() ||
+            !videoUrl?.trim() ||
+            !thumbnailUrl?.trim()
+        ) {
+            return res.status(400).json({
+                message: "All video fields are required"
             });
+        }
 
+        if (!isValidUrl(videoUrl.trim())) {
+            return res.status(400).json({
+                message: "Please provide a valid video URL"
+            });
+        }
+
+        if (!isValidUrl(thumbnailUrl.trim())) {
+            return res.status(400).json({
+                message: "Please provide a valid thumbnail URL"
+            });
+        }
+
+        const video = await Video.findById(req.params.id);
+
+        if (!video) {
+            return res.status(404).json({
+                message: "Video not found"
+            });
+        }
+
+        // Ownership check prevents users from editing another user's video.
+        if (video.uploader.toString() !== req.user.userId) {
+            return res.status(403).json({
+                message:
+                    "You are not allowed to edit this video"
+            });
+        }
+
+        // Update the editable video fields with cleaned values.
+        video.title = title.trim();
+        video.category = category.trim();
+        video.description = description.trim();
+        video.videoUrl = videoUrl.trim();
+        video.thumbnailUrl = thumbnailUrl.trim();
+
+        const updatedVideo = await video.save();
+
+        res.status(200).json({
+            message: "Video updated successfully",
+            video: updatedVideo
         });
-};
+    } catch (error) {
+        console.error("UPDATE VIDEO ERROR:", error);
 
+        res.status(500).json({
+            message: "Failed to update video"
+        });
+    }
+};
 
 // DELETE VIDEO
-const deleteVideo = (req, res) => {
+const deleteVideo = async (req, res) => {
+    try {
+        const video = await Video.findById(req.params.id);
 
-    const videoId = req.params.id;
-
-    Video.findById(videoId)
-
-        .then((video) => {
-
-            if (!video) {
-                return res.status(404).json({
-                    message: "Video not found"
-                });
-            }
-
-            // Check video owner
-            if (
-                video.uploader.toString() !==
-                req.user.userId
-            ) {
-                return res.status(403).json({
-                    message:
-                        "You are not allowed to delete this video"
-                });
-            }
-
-            return Video.findByIdAndDelete(videoId);
-
-        })
-
-        .then((deletedVideo) => {
-
-            if (deletedVideo) {
-
-                res.status(200).json({
-                    message: "Video deleted successfully"
-                });
-
-            }
-
-        })
-        .catch((error) => {
-
-            console.log(
-                "Error deleting video:",
-                error
-            );
-
-            res.status(500).json({
-                message: "Failed to delete video"
+        if (!video) {
+            return res.status(404).json({
+                message: "Video not found"
             });
+        }
 
+        // Ownership check prevents users from deleting another user's video.
+        if (video.uploader.toString() !== req.user.userId) {
+            return res.status(403).json({
+                message:
+                    "You are not allowed to delete this video"
+            });
+        }
+
+        await Video.findByIdAndDelete(req.params.id);
+
+        res.status(200).json({
+            message: "Video deleted successfully"
         });
+    } catch (error) {
+        console.error("DELETE VIDEO ERROR:", error);
+
+        res.status(500).json({
+            message: "Failed to delete video"
+        });
+    }
 };
 
-
 // LIKE VIDEO
-const likeVideo = (req, res) => {
-
-    const videoId = req.params.id;
-
-    Video.findByIdAndUpdate(
-        videoId,
-        {
-            $inc: {
-                likes: 1
-            }
-        },
-        {
-            new: true
-        }
-    )
-    .then((video) => {
+const likeVideo = async (req, res) => {
+    try {
+        const video = await Video.findByIdAndUpdate(
+            req.params.id,
+            { $inc: { likes: 1 } },
+            { new: true }
+        );
 
         if (!video) {
             return res.status(404).json({
@@ -314,40 +261,23 @@ const likeVideo = (req, res) => {
             likes: video.likes,
             dislikes: video.dislikes
         });
-
-    })
-    .catch((error) => {
-
-        console.log(
-            "Error liking video:",
-            error
-        );
+    } catch (error) {
+        console.error("LIKE VIDEO ERROR:", error);
 
         res.status(500).json({
             message: "Failed to like video"
         });
-
-    });
+    }
 };
 
-
 // DISLIKE VIDEO
-const dislikeVideo = (req, res) => {
-
-    const videoId = req.params.id;
-
-    Video.findByIdAndUpdate(
-        videoId,
-        {
-            $inc: {
-                dislikes: 1
-            }
-        },
-        {
-            new: true
-        }
-    )
-    .then((video) => {
+const dislikeVideo = async (req, res) => {
+    try {
+        const video = await Video.findByIdAndUpdate(
+            req.params.id,
+            { $inc: { dislikes: 1 } },
+            { new: true }
+        );
 
         if (!video) {
             return res.status(404).json({
@@ -360,88 +290,66 @@ const dislikeVideo = (req, res) => {
             likes: video.likes,
             dislikes: video.dislikes
         });
-
-    })
-    .catch((error) => {
-
-        console.log(
-            "Error disliking video:",
-            error
-        );
+    } catch (error) {
+        console.error("DISLIKE VIDEO ERROR:", error);
 
         res.status(500).json({
             message: "Failed to dislike video"
         });
-
-    });
+    }
 };
-
 
 // GET VIDEOS OF CHANNEL
-const getChannelVideos = (req, res) => {
-
-    const channelId = req.params.channelId;
-
-    Video.find({
-        channel: channelId
-    })
-        .sort({
-            uploadDate: -1
+const getChannelVideos = async (req, res) => {
+    try {
+        const videos = await Video.find({
+            channel: req.params.channelId
         })
-        .populate("channel")
-        .populate("uploader", "-password")
+            .sort({ uploadDate: -1 })
+            .populate("channel")
+            .populate("uploader", "-password");
 
-        .then((videos) => {
-
-            res.status(200).json({
-                videos: videos
-            });
-
-        })
-        .catch((error) => {
-
-            console.log(
-                "Error fetching channel videos:",
-                error
-            );
-
-            res.status(500).json({
-                message:
-                    "Failed to fetch channel videos"
-            });
-
+        res.status(200).json({
+            videos
         });
+    } catch (error) {
+        console.error("GET CHANNEL VIDEOS ERROR:", error);
+
+        res.status(500).json({
+            message: "Failed to fetch channel videos"
+        });
+    }
 };
+
 // INCREMENT VIDEO VIEWS
-const incrementViews = (req, res) => {
-    const videoId = req.params.id;
+const incrementViews = async (req, res) => {
+    try {
+        const video = await Video.findByIdAndUpdate(
+            req.params.id,
+            { $inc: { views: 1 } },
+            { new: true }
+        );
 
-    Video.findByIdAndUpdate(
-        videoId,
-        { $inc: { views: 1 } },
-        { new: true }
-    )
-        .then((video) => {
-            if (!video) {
-                return res.status(404).json({
-                    message: "Video not found"
-                });
-            }
+        if (!video) {
+            return res.status(404).json({
+                message: "Video not found"
+            });
+        }
 
-            res.status(200).json({
-                message: "View counted",
-                views: video.views
-            });
-        })
-        .catch((error) => {
-            console.log("Error incrementing views:", error);
-            res.status(500).json({
-                message: "Failed to update views"
-            });
+        res.status(200).json({
+            message: "View counted",
+            views: video.views
         });
+    } catch (error) {
+        console.error("INCREMENT VIEWS ERROR:", error);
+
+        res.status(500).json({
+            message: "Failed to update views"
+        });
+    }
 };
 
-// EXPORTS
+// Export all video controller functions for the video routes.
 export {
     getVideos,
     getVideo,
