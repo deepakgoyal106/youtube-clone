@@ -1,208 +1,178 @@
 import Channel from "../models/Channel.js";
+import Video from "../models/Video.js";
 
-const createChannel = (req, res) => {
+// Create a new channel for the authenticated user.
+const createChannel = async (req, res) => {
+    try {
+        const { name, description } = req.body;
 
-    // Get channel information from request body
-    const { name, description } = req.body;
+        if (!name || !description) {
+            return res.status(400).json({
+                message: "Channel name and description are required"
+            });
+        }
 
-    // Check required fields
-    if (!name || !description) {
-        return res.status(400).json({
-            message: "Channel name and description are required"
+        // Prevent a user from creating multiple channels.
+        const existingChannel = await Channel.findOne({
+            owner: req.user.userId
+        });
+
+        if (existingChannel) {
+            return res.status(400).json({
+                message: "You already have a channel"
+            });
+        }
+
+        const channel = await Channel.create({
+            name: name.trim(),
+            description: description.trim(),
+            owner: req.user.userId
+        });
+
+        res.status(201).json({
+            message: "Channel created successfully",
+            channel
+        });
+    } catch (error) {
+        console.error("CREATE CHANNEL ERROR:", error);
+
+        res.status(500).json({
+            message: "Failed to create channel"
         });
     }
-
-    // Create channel using the logged-in user's ID
-    const newChannel = new Channel({
-        name: name,
-        description: description,
-        owner: req.user.userId
-    });
-
-    // Save channel to MongoDB
-    newChannel.save()
-
-        .then((channel) => {
-
-            res.status(201).json({
-                message: "Channel created successfully",
-                channel: channel
-            });
-
-        })
-
-        .catch((error) => {
-
-            console.log("Error creating channel:", error);
-
-            res.status(500).json({
-                message: "Failed to create channel"
-            });
-
-        });
 };
 
-const getChannel = (req, res) => {
+// Get a channel by its ID.
+const getChannel = async (req, res) => {
+    try {
+        const channel = await Channel.findById(req.params.id)
+            .populate("owner", "username email");
 
-    // Get channel ID from the URL
-    const channelId = req.params.id;
-
-    // Find channel and get owner information
-    Channel.findById(channelId)
-        .populate("owner")
-
-        .then((channel) => {
-
-            // Channel not found
-            if (!channel) {
-                return res.status(404).json({
-                    message: "Channel not found"
-                });
-            }
-
-            res.status(200).json({
-                channel: channel
+        if (!channel) {
+            return res.status(404).json({
+                message: "Channel not found"
             });
+        }
 
-        })
-
-        .catch((error) => {
-
-            console.log("Error fetching channel:", error);
-
-            res.status(500).json({
-                message: "Failed to fetch channel"
-            });
-
+        res.status(200).json({
+            channel
         });
-};
-const updateChannel = (req, res) => {
+    } catch (error) {
+        console.error("GET CHANNEL ERROR:", error);
 
-    // Get channel ID from the URL
-    const channelId = req.params.id;
-
-    // Get updated information from request body
-    const { name, description } = req.body;
-
-    // Find the channel
-    Channel.findById(channelId)
-
-        .then((channel) => {
-
-            // Channel does not exist
-            if (!channel) {
-                return res.status(404).json({
-                    message: "Channel not found"
-                });
-            }
-
-            // Check if logged-in user owns this channel
-            if (channel.owner.toString() !== req.user.userId) {
-                return res.status(403).json({
-                    message: "You are not allowed to edit this channel"
-                });
-            }
-
-            // Update channel fields
-            channel.name = name || channel.name;
-            channel.description = description || channel.description;
-
-            // Save changes
-            return channel.save();
-        })
-
-        .then((updatedChannel) => {
-
-            // Return updated channel
-            if (updatedChannel) {
-                res.status(200).json({
-                    message: "Channel updated successfully",
-                    channel: updatedChannel
-                });
-            }
-        })
-
-        .catch((error) => {
-
-            console.log("Error updating channel:", error);
-
-            res.status(500).json({
-                message: "Failed to update channel"
-            });
+        res.status(500).json({
+            message: "Failed to fetch channel"
         });
+    }
 };
 
-const deleteChannel = (req, res) => {
-
-    // Get channel ID from the URL
-    const channelId = req.params.id;
-
-    // Find the channel
-    Channel.findById(channelId)
-
-        .then((channel) => {
-
-            // Channel does not exist
-            if (!channel) {
-                return res.status(404).json({
-                    message: "Channel not found"
-                });
-            }
-
-            // Check if logged-in user owns this channel
-            if (channel.owner.toString() !== req.user.userId) {
-                return res.status(403).json({
-                    message: "You are not allowed to delete this channel"
-                });
-            }
-
-            // Delete the channel
-            return Channel.findByIdAndDelete(channelId);
-        })
-
-        .then((deletedChannel) => {
-
-            if (deletedChannel) {
-                res.status(200).json({
-                    message: "Channel deleted successfully"
-                });
-            }
-        })
-
-        .catch((error) => {
-
-            console.log("Error deleting channel:", error);
-
-            res.status(500).json({
-                message: "Failed to delete channel"
-            });
+// Get the channel belonging to the currently authenticated user.
+const getMyChannel = async (req, res) => {
+    try {
+        const channel = await Channel.findOne({
+            owner: req.user.userId
         });
+
+        if (!channel) {
+            return res.status(404).json({
+                message: "Channel not found"
+            });
+        }
+
+        res.status(200).json({
+            channel
+        });
+    } catch (error) {
+        console.error("GET MY CHANNEL ERROR:", error);
+
+        res.status(500).json({
+            message: "Failed to fetch your channel"
+        });
+    }
 };
-const getMyChannel = (req, res) => {
 
-    Channel.findOne({ owner: req.user.userId })
-        .then((channel) => {
+// Update the authenticated user's channel.
+const updateChannel = async (req, res) => {
+    try {
+        const { name, description } = req.body;
 
-            if (!channel) {
-                return res.status(404).json({
-                    message: "You have not created a channel yet"
-                });
-            }
-
-            res.status(200).json({
-                channel: channel
+        if (!name || !description) {
+            return res.status(400).json({
+                message: "Channel name and description are required"
             });
+        }
 
-        })
-        .catch((error) => {
+        const channel = await Channel.findById(req.params.id);
 
-            console.log("Error fetching my channel:", error);
-
-            res.status(500).json({
-                message: "Failed to fetch channel"
+        if (!channel) {
+            return res.status(404).json({
+                message: "Channel not found"
             });
+        }
 
+        // Ownership check prevents users from editing another user's channel.
+        if (channel.owner.toString() !== req.user.userId) {
+            return res.status(403).json({
+                message: "You can only update your own channel"
+            });
+        }
+
+        channel.name = name.trim();
+        channel.description = description.trim();
+
+        await channel.save();
+
+        res.status(200).json({
+            message: "Channel updated successfully",
+            channel
         });
+    } catch (error) {
+        console.error("UPDATE CHANNEL ERROR:", error);
+
+        res.status(500).json({
+            message: "Failed to update channel"
+        });
+    }
+};
+
+// Delete the authenticated user's channel and its videos.
+const deleteChannel = async (req, res) => {
+    try {
+        const channel = await Channel.findById(req.params.id);
+
+        if (!channel) {
+            return res.status(404).json({
+                message: "Channel not found"
+            });
+        }
+
+        // Ownership check prevents users from deleting another user's channel.
+        if (channel.owner.toString() !== req.user.userId) {
+            return res.status(403).json({
+                message: "You can only delete your own channel"
+            });
+        }
+
+        // Delete all videos connected to this channel first.
+        // This prevents orphaned video documents from remaining in MongoDB.
+        const deletedVideos = await Video.deleteMany({
+            channel: channel._id
+        });
+
+        // Delete the channel after its related videos are removed.
+        await Channel.findByIdAndDelete(channel._id);
+
+        res.status(200).json({
+            message: "Channel and its videos deleted successfully",
+            deletedVideos: deletedVideos.deletedCount
+        });
+    } catch (error) {
+        console.error("DELETE CHANNEL ERROR:", error);
+
+        res.status(500).json({
+            message: "Failed to delete channel"
+        });
+    }
 };
 
 export {
