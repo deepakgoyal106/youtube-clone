@@ -13,6 +13,7 @@ function UploadVideo() {
     const [channel, setChannel] = useState(null);
     const [error, setError] = useState("");
     const [message, setMessage] = useState("");
+    const [uploading, setUploading] = useState(false);
 
     useEffect(() => {
         const token = localStorage.getItem("token");
@@ -41,6 +42,15 @@ function UploadVideo() {
         });
     }, []);
 
+    const isValidUrl = (value) => {
+        try {
+            new URL(value);
+            return true;
+        } catch {
+            return false;
+        }
+    };
+
     const handleSubmit = (e) => {
         e.preventDefault();
 
@@ -58,16 +68,35 @@ function UploadVideo() {
             return;
         }
 
+        if (!isValidUrl(videoUrl.trim())) {
+            setError("Please enter a valid video URL");
+            return;
+        }
+
+        if (!isValidUrl(thumbnailUrl.trim())) {
+            setError("Please enter a valid thumbnail URL");
+            return;
+        }
+
+        if (!channel) {
+            setError(
+                "You need a channel before uploading a video"
+            );
+            return;
+        }
+
         const token = localStorage.getItem("token");
+
+        setUploading(true);
 
         axios.post(
             "http://localhost:5050/api/videos",
             {
-                title,
+                title: title.trim(),
                 category,
-                description,
-                videoUrl,
-                thumbnailUrl,
+                description: description.trim(),
+                videoUrl: videoUrl.trim(),
+                thumbnailUrl: thumbnailUrl.trim(),
                 channelId: channel._id
             },
             {
@@ -102,6 +131,9 @@ function UploadVideo() {
                 error.response?.data?.message ||
                 "Failed to upload video"
             );
+        })
+        .finally(() => {
+            setUploading(false);
         });
     };
 
@@ -111,11 +143,13 @@ function UploadVideo() {
             <div className="upload-container">
 
                 <div className="upload-header">
+
                     <h1>Upload Video</h1>
 
                     <p>
                         Share a new video on your channel
                     </p>
+
                 </div>
 
                 {error && (
@@ -132,6 +166,7 @@ function UploadVideo() {
 
                 {channel && (
                     <div className="upload-channel">
+
                         <div className="upload-channel-avatar">
                             {channel.name
                                 .charAt(0)
@@ -139,12 +174,15 @@ function UploadVideo() {
                         </div>
 
                         <div>
-                            <span>Uploading to</span>
+                            <span>
+                                Uploading to
+                            </span>
 
                             <strong>
                                 {channel.name}
                             </strong>
                         </div>
+
                     </div>
                 )}
 
@@ -161,6 +199,7 @@ function UploadVideo() {
                     >
 
                         <div className="form-group">
+
                             <label>
                                 Video Title
                             </label>
@@ -174,10 +213,13 @@ function UploadVideo() {
                                         e.target.value
                                     )
                                 }
+                                maxLength={150}
                             />
+
                         </div>
 
                         <div className="form-group">
+
                             <label>
                                 Category
                             </label>
@@ -218,9 +260,11 @@ function UploadVideo() {
                                     Technology
                                 </option>
                             </select>
+
                         </div>
 
                         <div className="form-group">
+
                             <label>
                                 Description
                             </label>
@@ -233,16 +277,19 @@ function UploadVideo() {
                                         e.target.value
                                     )
                                 }
+                                maxLength={1000}
                             />
+
                         </div>
 
                         <div className="form-group">
+
                             <label>
                                 Video URL
                             </label>
 
                             <input
-                                type="text"
+                                type="url"
                                 placeholder="https://example.com/video.mp4"
                                 value={videoUrl}
                                 onChange={(e) =>
@@ -253,17 +300,19 @@ function UploadVideo() {
                             />
 
                             <small>
-                                Enter the URL of your video file.
+                                Enter a valid URL for your video file.
                             </small>
+
                         </div>
 
                         <div className="form-group">
+
                             <label>
                                 Thumbnail URL
                             </label>
 
                             <input
-                                type="text"
+                                type="url"
                                 placeholder="https://example.com/thumbnail.jpg"
                                 value={thumbnailUrl}
                                 onChange={(e) =>
@@ -274,17 +323,23 @@ function UploadVideo() {
                             />
 
                             <small>
-                                Enter the URL of your video thumbnail.
+                                Enter a valid URL for your video thumbnail.
                             </small>
+
                         </div>
 
                         <div className="upload-actions">
+
                             <button
                                 type="submit"
                                 className="upload-submit-button"
+                                disabled={uploading}
                             >
-                                Upload Video
+                                {uploading
+                                    ? "Uploading..."
+                                    : "Upload Video"}
                             </button>
+
                         </div>
 
                     </form>
