@@ -1,9 +1,11 @@
+
 import "./Sidebar.css";
 import { useNavigate } from "react-router-dom";
 
 function Sidebar() {
-
     const navigate = useNavigate();
+
+    const token = localStorage.getItem("token");
 
     return (
         <aside className="sidebar">
@@ -15,27 +17,32 @@ function Sidebar() {
                 🏠 Home
             </div>
 
-            <div className="sidebar-item">
-                🔥 Trending
-            </div>
+            {token && (
+                <>
+                    <div
+                        className="sidebar-item"
+                        onClick={() => navigate("/channel")}
+                    >
+                        📺 My Channel
+                    </div>
 
-            <div className="sidebar-item">
-                📺 Subscriptions
-            </div>
+                    <div
+                        className="sidebar-item"
+                        onClick={() => navigate("/upload")}
+                    >
+                        ⬆️ Upload Video
+                    </div>
+                </>
+            )}
 
-            <hr />
-
-            <div className="sidebar-item">
-                📚 Library
-            </div>
-
-            <div className="sidebar-item">
-                🕒 History
-            </div>
-
-            <div className="sidebar-item">
-                👍 Liked Videos
-            </div>
+            {!token && (
+                <div
+                    className="sidebar-item"
+                    onClick={() => navigate("/login")}
+                >
+                    🔐 Sign in
+                </div>
+            )}
 
         </aside>
     );
