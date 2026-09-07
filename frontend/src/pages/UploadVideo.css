@@ -244,3 +244,28 @@
         width: 100%;
     }
 }
+
+/* Red border for fields with validation errors */
+.upload-form input.input-error,
+.upload-form textarea.input-error,
+.upload-form select.input-error {
+    border: 2px solid red !important;
+    outline: none;
+}
+
+/* Keep the red border when the field is focused */
+.upload-form input.input-error:focus,
+.upload-form textarea.input-error:focus,
+.upload-form select.input-error:focus {
+    border: 2px solid red !important;
+    outline: none;
+    box-shadow: 0 0 0 1px red;
+}
+
+/* Validation message */
+.field-error {
+    color: red;
+    font-size: 14px;
+    font-weight: 600;
+    margin-top: 5px;
+}

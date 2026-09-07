@@ -11,7 +11,10 @@ const isValidUrl = (value) => {
     }
 };
 
+// ==========================================
 // CREATE VIDEO
+// ==========================================
+
 const createVideo = async (req, res) => {
     try {
         const {
@@ -23,7 +26,7 @@ const createVideo = async (req, res) => {
             channelId
         } = req.body;
 
-        // Validate all required fields before accessing the database.
+        // Validate required fields.
         if (
             !title?.trim() ||
             !category?.trim() ||
@@ -37,19 +40,22 @@ const createVideo = async (req, res) => {
             });
         }
 
-        // Validate URL fields before saving them to MongoDB.
+        // Validate video URL.
         if (!isValidUrl(videoUrl.trim())) {
             return res.status(400).json({
                 message: "Please provide a valid video URL"
             });
         }
 
+        // Validate thumbnail URL.
         if (!isValidUrl(thumbnailUrl.trim())) {
             return res.status(400).json({
-                message: "Please provide a valid thumbnail URL"
+                message:
+                    "Please provide a valid thumbnail URL"
             });
         }
 
+        // Find the channel.
         const channel = await Channel.findById(channelId);
 
         if (!channel) {
@@ -58,8 +64,11 @@ const createVideo = async (req, res) => {
             });
         }
 
-        // Only the channel owner can upload videos to that channel.
-        if (channel.owner.toString() !== req.user.userId) {
+        // Only channel owner can upload.
+        if (
+            channel.owner.toString() !==
+            req.user.userId
+        ) {
             return res.status(403).json({
                 message:
                     "You are not allowed to upload to this channel"
@@ -81,7 +90,10 @@ const createVideo = async (req, res) => {
             video
         });
     } catch (error) {
-        console.error("CREATE VIDEO ERROR:", error);
+        console.error(
+            "CREATE VIDEO ERROR:",
+            error
+        );
 
         res.status(500).json({
             message: "Failed to create video"
@@ -89,7 +101,10 @@ const createVideo = async (req, res) => {
     }
 };
 
+// ==========================================
 // GET ALL VIDEOS
+// ==========================================
+
 const getVideos = async (req, res) => {
     try {
         const videos = await Video.find()
@@ -97,11 +112,38 @@ const getVideos = async (req, res) => {
             .populate("channel")
             .populate("uploader", "-password");
 
+        /*
+         * Detect orphan videos.
+         *
+         * When populate("channel") cannot find the
+         * referenced channel, Mongoose returns null.
+         *
+         * Therefore:
+         *
+         * video.channel === null
+         *
+         * means the channel was deleted or does not exist.
+         */
+        const videosWithOrphanStatus =
+            videos.map((video) => {
+                const videoObject =
+                    video.toObject();
+
+                videoObject.isOrphan =
+                    !videoObject.channel ||
+                    !videoObject.channel._id;
+
+                return videoObject;
+            });
+
         res.status(200).json({
-            videos
+            videos: videosWithOrphanStatus
         });
     } catch (error) {
-        console.error("GET VIDEOS ERROR:", error);
+        console.error(
+            "GET VIDEOS ERROR:",
+            error
+        );
 
         res.status(500).json({
             message: "Failed to fetch videos"
@@ -109,10 +151,15 @@ const getVideos = async (req, res) => {
     }
 };
 
+// ==========================================
 // GET SINGLE VIDEO
+// ==========================================
+
 const getVideo = async (req, res) => {
     try {
-        const video = await Video.findById(req.params.id)
+        const video = await Video.findById(
+            req.params.id
+        )
             .populate("channel")
             .populate("uploader", "-password");
 
@@ -122,11 +169,21 @@ const getVideo = async (req, res) => {
             });
         }
 
+        const videoObject =
+            video.toObject();
+
+        videoObject.isOrphan =
+            !videoObject.channel ||
+            !videoObject.channel._id;
+
         res.status(200).json({
-            video
+            video: videoObject
         });
     } catch (error) {
-        console.error("GET VIDEO ERROR:", error);
+        console.error(
+            "GET VIDEO ERROR:",
+            error
+        );
 
         res.status(500).json({
             message: "Failed to fetch video"
@@ -134,7 +191,10 @@ const getVideo = async (req, res) => {
     }
 };
 
+// ==========================================
 // UPDATE VIDEO
+// ==========================================
+
 const updateVideo = async (req, res) => {
     try {
         const {
@@ -145,7 +205,7 @@ const updateVideo = async (req, res) => {
             thumbnailUrl
         } = req.body;
 
-        // Validate required fields for a complete video update.
+        // Validate required fields.
         if (
             !title?.trim() ||
             !category?.trim() ||
@@ -154,23 +214,30 @@ const updateVideo = async (req, res) => {
             !thumbnailUrl?.trim()
         ) {
             return res.status(400).json({
-                message: "All video fields are required"
+                message:
+                    "All video fields are required"
             });
         }
 
+        // Validate video URL.
         if (!isValidUrl(videoUrl.trim())) {
             return res.status(400).json({
-                message: "Please provide a valid video URL"
+                message:
+                    "Please provide a valid video URL"
             });
         }
 
+        // Validate thumbnail URL.
         if (!isValidUrl(thumbnailUrl.trim())) {
             return res.status(400).json({
-                message: "Please provide a valid thumbnail URL"
+                message:
+                    "Please provide a valid thumbnail URL"
             });
         }
 
-        const video = await Video.findById(req.params.id);
+        const video = await Video.findById(
+            req.params.id
+        );
 
         if (!video) {
             return res.status(404).json({
@@ -178,29 +245,39 @@ const updateVideo = async (req, res) => {
             });
         }
 
-        // Ownership check prevents users from editing another user's video.
-        if (video.uploader.toString() !== req.user.userId) {
+        // Ownership check.
+        if (
+            !video.uploader ||
+            video.uploader.toString() !==
+                req.user.userId
+        ) {
             return res.status(403).json({
                 message:
                     "You are not allowed to edit this video"
             });
         }
 
-        // Update the editable video fields with cleaned values.
+        // Update fields.
         video.title = title.trim();
         video.category = category.trim();
         video.description = description.trim();
         video.videoUrl = videoUrl.trim();
-        video.thumbnailUrl = thumbnailUrl.trim();
+        video.thumbnailUrl =
+            thumbnailUrl.trim();
 
-        const updatedVideo = await video.save();
+        const updatedVideo =
+            await video.save();
 
         res.status(200).json({
-            message: "Video updated successfully",
+            message:
+                "Video updated successfully",
             video: updatedVideo
         });
     } catch (error) {
-        console.error("UPDATE VIDEO ERROR:", error);
+        console.error(
+            "UPDATE VIDEO ERROR:",
+            error
+        );
 
         res.status(500).json({
             message: "Failed to update video"
@@ -208,10 +285,15 @@ const updateVideo = async (req, res) => {
     }
 };
 
-// DELETE VIDEO
+// ==========================================
+// DELETE NORMAL VIDEO
+// ==========================================
+
 const deleteVideo = async (req, res) => {
     try {
-        const video = await Video.findById(req.params.id);
+        const video = await Video.findById(
+            req.params.id
+        );
 
         if (!video) {
             return res.status(404).json({
@@ -219,36 +301,144 @@ const deleteVideo = async (req, res) => {
             });
         }
 
-        // Ownership check prevents users from deleting another user's video.
-        if (video.uploader.toString() !== req.user.userId) {
+        // Ownership check.
+        if (
+            !video.uploader ||
+            video.uploader.toString() !==
+                req.user.userId
+        ) {
             return res.status(403).json({
                 message:
                     "You are not allowed to delete this video"
             });
         }
 
-        await Video.findByIdAndDelete(req.params.id);
+        await Video.findByIdAndDelete(
+            req.params.id
+        );
 
         res.status(200).json({
-            message: "Video deleted successfully"
+            message:
+                "Video deleted successfully"
         });
     } catch (error) {
-        console.error("DELETE VIDEO ERROR:", error);
+        console.error(
+            "DELETE VIDEO ERROR:",
+            error
+        );
 
         res.status(500).json({
-            message: "Failed to delete video"
+            message:
+                "Failed to delete video"
         });
     }
 };
 
+// ==========================================
+// DELETE ORPHAN VIDEO
+// ==========================================
+
+const deleteOrphanVideo = async (req, res) => {
+    try {
+        const video = await Video.findById(
+            req.params.id
+        );
+
+        if (!video) {
+            return res.status(404).json({
+                message: "Video not found"
+            });
+        }
+
+        /*
+         * Only the uploader can delete the video.
+         */
+        if (
+            !video.uploader ||
+            video.uploader.toString() !==
+                req.user.userId
+        ) {
+            return res.status(403).json({
+                message:
+                    "You are not allowed to delete this video"
+            });
+        }
+
+        /*
+         * Check whether the channel actually exists.
+         *
+         * This handles BOTH cases:
+         *
+         * Case 1:
+         * video.channel is null/missing.
+         *
+         * Case 2:
+         * video.channel contains an ID,
+         * but that channel was deleted.
+         */
+        let channelExists = false;
+
+        if (video.channel) {
+            channelExists =
+                await Channel.exists({
+                    _id: video.channel
+                });
+        }
+
+        /*
+         * If the channel still exists,
+         * this is NOT an orphan video.
+         */
+        if (channelExists) {
+            return res.status(400).json({
+                message:
+                    "This video belongs to an existing channel and cannot be deleted as an orphan"
+            });
+        }
+
+        /*
+         * The video is orphaned.
+         * Delete it.
+         */
+        await Video.findByIdAndDelete(
+            req.params.id
+        );
+
+        res.status(200).json({
+            message:
+                "Orphan video deleted successfully"
+        });
+    } catch (error) {
+        console.error(
+            "DELETE ORPHAN VIDEO ERROR:",
+            error
+        );
+
+        res.status(500).json({
+            message:
+                "Failed to delete orphan video"
+        });
+    }
+};
+
+// ==========================================
 // LIKE VIDEO
+// ==========================================
+
 const likeVideo = async (req, res) => {
     try {
-        const video = await Video.findByIdAndUpdate(
-            req.params.id,
-            { $inc: { likes: 1 } },
-            { new: true }
-        );
+        const video =
+            await Video.findByIdAndUpdate(
+                req.params.id,
+                {
+                    $inc: {
+                        likes: 1
+                    }
+                },
+                {
+                    new: true
+                }
+            );
 
         if (!video) {
             return res.status(404).json({
@@ -262,22 +452,36 @@ const likeVideo = async (req, res) => {
             dislikes: video.dislikes
         });
     } catch (error) {
-        console.error("LIKE VIDEO ERROR:", error);
+        console.error(
+            "LIKE VIDEO ERROR:",
+            error
+        );
 
         res.status(500).json({
-            message: "Failed to like video"
+            message:
+                "Failed to like video"
         });
     }
 };
 
+// ==========================================
 // DISLIKE VIDEO
+// ==========================================
+
 const dislikeVideo = async (req, res) => {
     try {
-        const video = await Video.findByIdAndUpdate(
-            req.params.id,
-            { $inc: { dislikes: 1 } },
-            { new: true }
-        );
+        const video =
+            await Video.findByIdAndUpdate(
+                req.params.id,
+                {
+                    $inc: {
+                        dislikes: 1
+                    }
+                },
+                {
+                    new: true
+                }
+            );
 
         if (!video) {
             return res.status(404).json({
@@ -291,44 +495,78 @@ const dislikeVideo = async (req, res) => {
             dislikes: video.dislikes
         });
     } catch (error) {
-        console.error("DISLIKE VIDEO ERROR:", error);
+        console.error(
+            "DISLIKE VIDEO ERROR:",
+            error
+        );
 
         res.status(500).json({
-            message: "Failed to dislike video"
+            message:
+                "Failed to dislike video"
         });
     }
 };
 
+// ==========================================
 // GET VIDEOS OF CHANNEL
-const getChannelVideos = async (req, res) => {
+// ==========================================
+
+const getChannelVideos = async (
+    req,
+    res
+) => {
     try {
-        const videos = await Video.find({
-            channel: req.params.channelId
-        })
-            .sort({ uploadDate: -1 })
-            .populate("channel")
-            .populate("uploader", "-password");
+        const videos =
+            await Video.find({
+                channel:
+                    req.params.channelId
+            })
+                .sort({
+                    uploadDate: -1
+                })
+                .populate("channel")
+                .populate(
+                    "uploader",
+                    "-password"
+                );
 
         res.status(200).json({
             videos
         });
     } catch (error) {
-        console.error("GET CHANNEL VIDEOS ERROR:", error);
+        console.error(
+            "GET CHANNEL VIDEOS ERROR:",
+            error
+        );
 
         res.status(500).json({
-            message: "Failed to fetch channel videos"
+            message:
+                "Failed to fetch channel videos"
         });
     }
 };
 
+// ==========================================
 // INCREMENT VIDEO VIEWS
-const incrementViews = async (req, res) => {
+// ==========================================
+
+const incrementViews = async (
+    req,
+    res
+) => {
     try {
-        const video = await Video.findByIdAndUpdate(
-            req.params.id,
-            { $inc: { views: 1 } },
-            { new: true }
-        );
+        const video =
+            await Video.findByIdAndUpdate(
+                req.params.id,
+                {
+                    $inc: {
+                        views: 1
+                    }
+                },
+                {
+                    new: true
+                }
+            );
 
         if (!video) {
             return res.status(404).json({
@@ -341,20 +579,28 @@ const incrementViews = async (req, res) => {
             views: video.views
         });
     } catch (error) {
-        console.error("INCREMENT VIEWS ERROR:", error);
+        console.error(
+            "INCREMENT VIEWS ERROR:",
+            error
+        );
 
         res.status(500).json({
-            message: "Failed to update views"
+            message:
+                "Failed to update views"
         });
     }
 };
 
-// Export all video controller functions for the video routes.
+// ==========================================
+// EXPORTS
+// ==========================================
+
 export {
     getVideos,
     getVideo,
     updateVideo,
     deleteVideo,
+    deleteOrphanVideo,
     likeVideo,
     dislikeVideo,
     getChannelVideos,

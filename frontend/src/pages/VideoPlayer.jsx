@@ -50,15 +50,20 @@ function VideoPlayer() {
         .then((response) => {
             setVideo(response.data.video);
         })
-        .catch((error) => {
+       .catch((error) => {
+            console.log("VIDEO ERROR:", error);
             console.log(
-                "VIDEO ERROR:",
+                "VIDEO ERROR RESPONSE:",
                 error.response?.data
+            );
+            console.log(
+                "VIDEO ERROR STATUS:",
+                error.response?.status
             );
 
             setError(
                 error.response?.data?.message ||
-                "Failed to load video"
+                `Failed to load video (${error.response?.status || "Network Error"})`
             );
         });
     }, [id]);

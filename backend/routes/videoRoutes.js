@@ -6,6 +6,7 @@ import createVideo, {
     getVideo,
     updateVideo,
     deleteVideo,
+    deleteOrphanVideo,
     likeVideo,
     dislikeVideo,
     getChannelVideos,
@@ -66,13 +67,32 @@ router.get("/:id", getVideo);
 // Update a video - authentication required.
 router.put("/:id", authMiddleware, updateVideo);
 
-// Delete a video - authentication required.
-router.delete("/:id", authMiddleware, deleteVideo);
+// Delete an orphan video - authentication required.
+router.delete(
+    "/:id/orphan",
+    authMiddleware,
+    deleteOrphanVideo
+);
+
+// Delete a normal video - authentication required.
+router.delete(
+    "/:id",
+    authMiddleware,
+    deleteVideo
+);
 
 // Like a video - authentication required.
-router.put("/:id/like", authMiddleware, likeVideo);
+router.put(
+    "/:id/like",
+    authMiddleware,
+    likeVideo
+);
 
 // Dislike a video - authentication required.
-router.put("/:id/dislike", authMiddleware, dislikeVideo);
+router.put(
+    "/:id/dislike",
+    authMiddleware,
+    dislikeVideo
+);
 
 export default router;
