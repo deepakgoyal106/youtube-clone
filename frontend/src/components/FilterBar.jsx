@@ -1,35 +1,41 @@
 import "./FilterBar.css";
 
-function FilterBar({ selectedCategory, setSelectedCategory }) {
+// Categories displayed in the YouTube-style filter bar.
+const categories = [
+    "All",
+    "Music",
+    "Gaming",
+    "Education",
+    "Sports",
+    "News",
+    "Entertainment"
+];
 
-    const categories = [
-        "All",
-        "Music",
-        "Gaming",
-        "Coding",
-        "Education",
-        "Entertainment",
-        "Sports",
-        "Technology"
-    ];
-
+function FilterBar({
+    selectedCategory,
+    setSelectedCategory
+}) {
     return (
-        <div className="filter-bar">
-
+        <div
+            className="filter-bar"
+            role="group"
+            aria-label="Video categories"
+        >
             {categories.map((category) => (
-
                 <button
                     key={category}
-                    onClick={() => setSelectedCategory(category)}
+                    type="button"
                     className={
-                        selectedCategory === category ? "active" : ""
+                        selectedCategory === category
+                            ? "filter-button active"
+                            : "filter-button"
                     }
+                    onClick={() => setSelectedCategory(category)}
+                    aria-pressed={selectedCategory === category}
                 >
                     {category}
                 </button>
-
             ))}
-
         </div>
     );
 }
